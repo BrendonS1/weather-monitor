@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 """
 Weather Data Monitor for weather.nsac.co.nz
-Monitors NEmetData.txt file and stores changes to SQLite database
+Monitors NEmetData.txt file and stores changes to PostgreSQL database
 """
 
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import requests
 import hashlib
 import time
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 
 # Configuration
 CONFIG = {
     'url': 'http://weather.nsac.co.nz/NEmetData.txt',
-    'database': 'weather_data.db',
+    'database_url': os.environ.get('DATABASE_URL'),  # Render provides this automatically
     'check_interval': 30,  # seconds (30 = 30 seconds) - CHANGE THIS AS NEEDED
     'timeout': 30,  # request timeout in seconds
     'log_file': 'weather_monitor.log'
@@ -37,19 +39,27 @@ logger = logging.getLogger(__name__)
 class WeatherMonitor:
     def __init__(self, config):
         self.config = config
-        self.db_path = config['database']
+        self.database_url = config['database_url']
         self.url = config['url']
+        
+        if not self.database_url:
+            raise ValueError("DATABASE_URL environment variable is not set")
+        
         self.init_database()
         
+    def get_connection(self):
+        """Get a new database connection"""
+        return psycopg2.connect(self.database_url)
+        
     def init_database(self):
-        """Initialize SQLite database with required tables"""
-        conn = sqlite3.connect(self.db_path)
+        """Initialize PostgreSQL database with required tables"""
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         # Table for raw data captures
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS weather_data (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 content_hash TEXT NOT NULL,
                 raw_content TEXT NOT NULL,
@@ -60,7 +70,7 @@ class WeatherMonitor:
         # Table for parsed data (optional - customize based on actual data format)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS weather_readings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 capture_id INTEGER,
                 timestamp TIMESTAMP,
                 data_json TEXT,
@@ -71,7 +81,7 @@ class WeatherMonitor:
         # Archive table for old data
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS weather_data_archive (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 captured_at TIMESTAMP,
                 content_hash TEXT NOT NULL,
                 raw_content TEXT NOT NULL,
@@ -98,7 +108,7 @@ class WeatherMonitor:
         
         conn.commit()
         conn.close()
-        logger.info(f"Database initialized: {self.db_path}")
+        logger.info("Database initialized successfully")
     
     def get_content_hash(self, content):
         """Generate SHA256 hash of content"""
@@ -106,12 +116,12 @@ class WeatherMonitor:
     
     def is_duplicate(self, content_hash):
         """Check if this content hash already exists in database"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             SELECT COUNT(*) FROM weather_data 
-            WHERE content_hash = ?
+            WHERE content_hash = %s
         ''', (content_hash,))
         
         count = cursor.fetchone()[0]
@@ -140,7 +150,7 @@ class WeatherMonitor:
     
     def store_data(self, content):
         """Store new data in database"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         content_hash = self.get_content_hash(content)
@@ -148,10 +158,11 @@ class WeatherMonitor:
         
         cursor.execute('''
             INSERT INTO weather_data (content_hash, raw_content, file_size)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
+            RETURNING id
         ''', (content_hash, content, file_size))
         
-        capture_id = cursor.lastrowid
+        capture_id = cursor.fetchone()[0]
         conn.commit()
         conn.close()
         
@@ -160,7 +171,7 @@ class WeatherMonitor:
     
     def get_stats(self):
         """Get statistics about captured data"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('SELECT COUNT(*) FROM weather_data')
@@ -186,14 +197,14 @@ class WeatherMonitor:
     
     def archive_old_data(self, days=90):
         """Archive data older than specified days"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         # Find records to archive
         cursor.execute('''
             SELECT id, captured_at, content_hash, raw_content, file_size
             FROM weather_data
-            WHERE captured_at < datetime('now', '-' || ? || ' days')
+            WHERE captured_at < NOW() - INTERVAL '%s days'
         ''', (days,))
         
         records = cursor.fetchall()
@@ -204,15 +215,16 @@ class WeatherMonitor:
             return 0
         
         # Insert into archive
-        cursor.executemany('''
-            INSERT INTO weather_data_archive (id, captured_at, content_hash, raw_content, file_size)
-            VALUES (?, ?, ?, ?, ?)
-        ''', records)
+        for record in records:
+            cursor.execute('''
+                INSERT INTO weather_data_archive (id, captured_at, content_hash, raw_content, file_size)
+                VALUES (%s, %s, %s, %s, %s)
+            ''', record)
         
         # Delete from main table
         cursor.execute('''
             DELETE FROM weather_data
-            WHERE captured_at < datetime('now', '-' || ? || ' days')
+            WHERE captured_at < NOW() - INTERVAL '%s days'
         ''', (days,))
         
         conn.commit()
@@ -248,7 +260,7 @@ class WeatherMonitor:
         
         logger.info(f"Starting continuous monitoring (interval: {interval}s)")
         logger.info(f"Monitoring URL: {self.url}")
-        logger.info(f"Database: {self.db_path}")
+        logger.info(f"Database: PostgreSQL (Render)")
         logger.info(f"Auto-archive: Data older than 90 days will be archived daily")
         
         # Track when we last ran archive
@@ -312,7 +324,7 @@ def main():
     if args.stats:
         stats = monitor.get_stats()
         print(f"\n=== Weather Monitor Statistics ===")
-        print(f"Database: {CONFIG['database']}")
+        print(f"Database: PostgreSQL (Render)")
         print(f"Active records: {stats['total_captures']}")
         print(f"Archived records: {stats['archived_records']}")
         print(f"Last capture: {stats['last_capture']}")
