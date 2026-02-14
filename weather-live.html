@@ -675,7 +675,7 @@ async function fetchWeatherData() {
         const windDirTrend = data.winddirtrend.map(d => t2m(d));
         
         // ========== UPDATE WIND CARD ==========
-        document.querySelector('.wind-arrow').style.transform = `rotate(${windDir}deg)`;
+        document.querySelector('.wind-arrow').style.transform = `rotate(${windDir + 180}deg)`;
         document.querySelector('.wind-direction').textContent = frmtDir(windDir) + '°/' + Math.round(data.wind0avgwind) + 'kts';
         document.getElementById('windCurrent').textContent = Math.round(data.wind0wind) + ' kts';
         document.getElementById('windAvg').textContent = Math.round(data.wind0avgwind) + ' kts';
