@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>North Shore Airport Weather - Live</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px 40px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .header .metar {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            color: #666;
+            background: #f5f5f5;
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .header .timestamp {
+            font-size: 14px;
+            color: #888;
+            margin-top: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        .card-value {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1a1a1a;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+
+        .card-unit {
+            font-size: 20px;
+            color: #666;
+            font-weight: 400;
+        }
+
+        .card-detail {
+            font-size: 14px;
+            color: #666;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .card-detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .card-detail-label {
+            color: #888;
+        }
+
+        .card-detail-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .wind-compass {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            position: relative;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .wind-compass::before {
+            content: '';
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        .wind-arrow {
+            position: relative;
+            z-index: 1;
+            font-size: 80px;
+            transition: transform 0.5s ease;
+        }
+
+        .wind-direction {
+            position: absolute;
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            z-index: 2;
+        }
+
+        .chart-card {
+            grid-column: 1 / -1;
+            min-height: 350px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .notice {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 60px rgba(245, 87, 108, 0.4);
+            display: none;
+        }
+
+        .notice-title {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .badge.rain-light {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+
+        .badge.rain-moderate {
+            background: rgba(255, 152, 0, 0.2);
+            color: #FF9800;
+        }
+
+        .badge.rain-heavy {
+            background: rgba(244, 67, 54, 0.2);
+            color: #F44336;
+        }
+
+        .camera-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .camera-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .camera-image {
+            width: 100%;
+            height: 250px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .camera-label {
+            padding: 15px 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(76, 175, 80, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4CAF50;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .error {
+            background: rgba(244, 67, 54, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loading" id="loading">Loading weather data...</div>
+        
+        <!-- Header with METAR -->
+        <div class="header" id="header" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <h1>🛩️ North Shore Airport Weather</h1>
+                    <div class="live-indicator">
+                        <span class="live-dot"></span>
+                        LIVE DATA
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 14px; color: #888; margin-bottom: 5px;">NZNE</div>
+                    <div style="font-size: 24px; font-weight: 700; color: #667eea;" id="headerDir">---°</div>
+                </div>
+            </div>
+            <div class="metar" id="metar">
+                Loading...
+            </div>
+            <div class="timestamp" id="timestamp">
+                Initializing...
+            </div>
+        </div>
+
+        <!-- Notice (if active) -->
+        <div class="notice" id="notice">
+            <div class="notice-title">⚠️ NOTICE TO AIRMEN</div>
+            <div id="noticeText"></div>
+        </div>
+
+        <!-- Main Weather Cards -->
+        <div class="grid" id="mainGrid" style="display: none;">
+            <!-- Wind Card -->
+            <div class="card">
+                <div class="card-title">Wind</div>
+                <div class="wind-compass">
+                    <div class="wind-arrow" id="windArrow">↑</div>
+                    <div class="wind-direction" id="windDirDisplay">---°</div>
+                </div>
+                <div class="card-detail">
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Current</span>
+                        <span class="card-detail-value" id="windCurrent">-- kts</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Average</span>
+                        <span class="card-detail-value" id="windAvg">-- kts</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Gust (10 min)</span>
+                        <span class="card-detail-value" id="windGust10">-- kts</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Max (60 min)</span>
+                        <span class="card-detail-value" id="windMax60">-- kts</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Variable</span>
+                        <span class="card-detail-value" id="windVar">---</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Temperature Card -->
+            <div class="card">
+                <div class="card-title">Temperature</div>
+                <div class="card-value">
+                    <span id="tempCurrent">--</span><span class="card-unit">°C</span>
+                </div>
+                <div class="card-detail">
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Dew Point</span>
+                        <span class="card-detail-value" id="tempDew">--°C</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Humidity</span>
+                        <span class="card-detail-value" id="tempHum">--%</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Today's High</span>
+                        <span class="card-detail-value" id="tempDayMax">--°C at --:--</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Today's Low</span>
+                        <span class="card-detail-value" id="tempDayMin">--°C at --:--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pressure Card -->
+            <div class="card">
+                <div class="card-title">Pressure</div>
+                <div class="card-value">
+                    <span id="pressSea">----</span><span class="card-unit">hPa</span>
+                </div>
+                <div class="card-detail">
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Sea Level</span>
+                        <span class="card-detail-value" id="pressSeaDetail">---- hPa</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Station</span>
+                        <span class="card-detail-value" id="pressStation">---- hPa</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Today's High</span>
+                        <span class="card-detail-value" id="pressDayMax">---- hPa</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Today's Low</span>
+                        <span class="card-detail-value" id="pressDayMin">---- hPa</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rainfall Card -->
+            <div class="card">
+                <div class="card-title">Rainfall</div>
+                <div class="card-value">
+                    <span id="rainRate">-.-</span><span class="card-unit">mm/hr</span>
+                </div>
+                <div class="badge" id="rainBadge">No Rain</div>
+                <div class="card-detail">
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Total Today</span>
+                        <span class="card-detail-value" id="rainToday">-.-- mm</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">This Month</span>
+                        <span class="card-detail-value" id="rainMonth">-.-- mm</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">This Year</span>
+                        <span class="card-detail-value" id="rainYear">-.-- mm</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Last Rain</span>
+                        <span class="card-detail-value" id="rainLast">--/-- --:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wind Trend Chart -->
+        <div class="chart-card card" id="chartWind" style="display: none;">
+            <div class="card-title">Wind Strength - Last 60 Minutes</div>
+            <div id="windChart" style="width: 100%; height: 300px;"></div>
+        </div>
+
+        <!-- Wind Direction Chart -->
+        <div class="chart-card card" id="chartDir" style="display: none;">
+            <div class="card-title">Wind Direction - Last 60 Minutes</div>
+            <div id="dirChart" style="width: 100%; height: 300px;"></div>
+        </div>
+
+        <!-- Statistics Panel -->
+        <div class="card" id="statsPanel" style="display: none; grid-column: 1 / -1;">
+            <div class="card-title">Record Statistics</div>
+            <div class="stats-grid" id="statsGrid">
+                <!-- Stats will be populated here -->
+            </div>
+        </div>
+
+        <!-- Camera Feeds -->
+        <div id="cameraSection" style="display: none; grid-column: 1 / -1;">
+            <div class="card">
+                <div class="card-title">Weather Cameras</div>
+                <div class="camera-grid" id="cameraGrid">
+                    <!-- Cameras will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="footer" id="footer" style="display: none;">
+            North Shore Airport (NZNE) • Weather Station System<br>
+            <span id="footerText">Data updated every minute</span>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const PROXY_URL = 'http://localhost:3000/?url=';
+        const DATA_URL = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/NEmetData.txt');
+        const NOTICE_URL = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/awibexport.txt');
+        const CAM_URL = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/cams/CamInfo.txt');
+        const UPDATE_INTERVAL = 60000; // 60 seconds
+
+        let metData = null;
+        let updateTimer = null;
+
+        // Utility functions
+        function t2m(degT) {
+            // Convert true to magnetic (NZNE variation -19°)
+            let degM = degT - 19;
+            if (degM < 0) degM += 360;
+            return degM;
+        }
+
+        function frmtDir(dir) {
+            // Format direction: round to nearest 10, show 360 if 0, pad with zeros
+            let i = 10 * Math.round(dir / 10);
+            if (i === 0) i = 360;
+            if (i === 370) i = 10;
+            return String(i).padStart(3, '0');
+        }
+
+        function frmtTime(val) {
+            return String(val).padStart(2, '0');
+        }
+
+        function timeType(yyyy, mm, dd) {
+            // Determine NZST or NZDT based on daylight saving rules
+            const y = parseInt(yyyy);
+            const m = parseInt(mm);
+            const d = parseInt(dd);
+            
+            let dayLightSaving = false;
+            
+            if (m < 4 || m > 9) dayLightSaving = true;
+            
+            if (m === 4 && d <= 7) {
+                // First week in April - find first Sunday
+                for (let dTmp = 1; dTmp <= 7; dTmp++) {
+                    if (new Date(y, m - 1, dTmp).getDay() === 0) {
+                        if (d <= dTmp) dayLightSaving = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (m === 9 && d >= 24) {
+                // Last week in Sept - find last Sunday
+                for (let dTmp = 24; dTmp <= 30; dTmp++) {
+                    if (new Date(y, m - 1, dTmp).getDay() === 0) {
+                        if (d >= dTmp) dayLightSaving = true;
+                        break;
+                    }
+                }
+            }
+            
+            return dayLightSaving ? 'NZDT' : 'NZST';
+        }
+
+        function directionRange(vals, numVals) {
+            // Calculate wind direction range
+            const pts = {};
+            for (let i = 0; i < 360; i++) pts[i] = 0;
+            
+            for (let i = 0; i < numVals && i < vals.length; i++) {
+                pts[Math.round(vals[i])]++;
+            }
+            
+            let maxGap = 0;
+            let maxGapEnd = 0;
+            let currGap = 0;
+            
+            for (let i = 0; i < 720; i++) {
+                const ptr = i % 360;
+                if (pts[ptr] === 0) {
+                    currGap++;
+                    if (currGap > maxGap) {
+                        maxGap = currGap;
+                        maxGapEnd = ptr;
+                    }
+                } else {
+                    currGap = 0;
+                }
+            }
+            
+            if (maxGap < 120 || maxGap > 359 || numVals < 2) {
+                return 'n/a';
+            }
+            
+            let fromDeg = maxGapEnd;
+            let toDeg = maxGapEnd - maxGap;
+            if (toDeg < 0) toDeg += 360;
+            
+            return frmtDir(fromDeg) + 'v' + frmtDir(toDeg);
+        }
+
+        // Update UI with weather data
+        function updateUI(data) {
+            metData = data;
+            
+            // Convert wind directions to magnetic
+            const windDir = t2m(data.wind0dir);
+            const windDirMin = t2m(data.wind0dirmin10);
+            const windDirMax = t2m(data.wind0dirmax10);
+            
+            // Convert direction trend array
+            const windDirTrend = data.winddirtrend.map(d => t2m(d));
+            
+            // Update header
+            document.getElementById('headerDir').textContent = frmtDir(windDir) + '° M';
+            
+            // Build METAR-style string
+            const gustDiff = Math.round(data.wind0windmax10) - Math.round(data.wind0avgwind);
+            let metarStr = `NZNE ${frmtDir(windDir)}°M, ${Math.round(data.wind0avgwind)}`;
+            if (gustDiff > 5) {
+                metarStr += `G${Math.round(data.wind0windmax10)}`;
+            }
+            metarStr += ` kts, ${Math.round(data.thb0seapress)} hPa, ${Math.round(data.th0temp)}/${Math.round(data.th0dew)}°C`;
+            
+            // Add rain if present
+            if (data.rain0rate > 0) {
+                let rainTxt = ', Rain ';
+                if (data.rain0rate < 2.5) rainTxt += 'Light';
+                else if (data.rain0rate < 7.6) rainTxt += 'Moderate';
+                else rainTxt += 'HEAVY';
+                metarStr += rainTxt;
+            }
+            
+            document.getElementById('metar').textContent = metarStr;
+            
+            // Calculate data age
+            const sampleDate = new Date(
+                data.currYYYY, 
+                parseInt(data.currMM) - 1, 
+                data.currDD, 
+                data.currhh, 
+                data.currmm, 
+                0, 0
+            );
+            const dataAge = Math.round((new Date() - sampleDate) / 1000 / 60);
+            
+            const timeTypeStr = timeType(data.currYYYY, data.currMM, data.currDD);
+            let timestampStr = `At ${frmtTime(data.currhh)}:${frmtTime(data.currmm)} ${timeTypeStr}`;
+            if (dataAge > 1) {
+                timestampStr += ` • Updated ${dataAge} min ago`;
+            } else {
+                timestampStr += ` • Just updated`;
+            }
+            document.getElementById('timestamp').textContent = timestampStr;
+            
+            // Update wind card
+            document.getElementById('windCurrent').textContent = Math.round(data.wind0wind) + ' kts';
+            document.getElementById('windAvg').textContent = Math.round(data.wind0avgwind) + ' kts';
+            document.getElementById('windGust10').textContent = Math.round(data.wind0windmax10) + ' kts';
+            document.getElementById('windMax60').textContent = Math.round(data.wind0windmax60) + ' kts';
+            document.getElementById('windDirDisplay').textContent = frmtDir(windDir) + '°';
+            document.getElementById('windVar').textContent = directionRange(windDirTrend, 10);
+            
+            // Rotate wind arrow
+            const arrow = document.getElementById('windArrow');
+            arrow.style.transform = `rotate(${windDir}deg)`;
+            
+            // Update temperature card
+            document.getElementById('tempCurrent').textContent = Math.round(data.th0temp);
+            document.getElementById('tempDew').textContent = Math.round(data.th0dew) + '°C';
+            document.getElementById('tempHum').textContent = Math.round(data.th0hum) + '%';
+            
+            if (data.tempdmt) {
+                const maxTime = data.tempdmt.substr(8, 2) + ':' + data.tempdmt.substr(10, 2);
+                document.getElementById('tempDayMax').textContent = Math.round(data.tempdm) + '°C at ' + maxTime;
+            }
+            if (data.tempdmint) {
+                const minTime = data.tempdmint.substr(8, 2) + ':' + data.tempdmint.substr(10, 2);
+                document.getElementById('tempDayMin').textContent = Math.round(data.tempdmin) + '°C at ' + minTime;
+            }
+            
+            // Update pressure card
+            document.getElementById('pressSea').textContent = Math.round(data.thb0seapress);
+            document.getElementById('pressSeaDetail').textContent = Math.round(data.thb0seapress) + ' hPa';
+            document.getElementById('pressStation').textContent = Math.round(data.thb0press) + ' hPa';
+            document.getElementById('pressDayMax').textContent = Math.round(data.pressdm) + ' hPa';
+            document.getElementById('pressDayMin').textContent = Math.round(data.pressdmin) + ' hPa';
+            
+            // Update rain card
+            document.getElementById('rainRate').textContent = data.rain0rate.toFixed(1);
+            document.getElementById('rainToday').textContent = data.rainds + ' mm';
+            document.getElementById('rainMonth').textContent = data.rainms + ' mm';
+            document.getElementById('rainYear').textContent = data.rainys + ' mm';
+            
+            // Update rain badge
+            const rainBadge = document.getElementById('rainBadge');
+            if (data.rain0rate > 0) {
+                rainBadge.classList.remove('rain-light', 'rain-moderate', 'rain-heavy');
+                if (data.rain0rate < 2.5) {
+                    rainBadge.textContent = 'Light Rain';
+                    rainBadge.classList.add('rain-light');
+                } else if (data.rain0rate < 7.6) {
+                    rainBadge.textContent = 'Moderate Rain';
+                    rainBadge.classList.add('rain-moderate');
+                } else {
+                    rainBadge.textContent = 'HEAVY Rain';
+                    rainBadge.classList.add('rain-heavy');
+                }
+            } else {
+                rainBadge.textContent = 'No Rain';
+                rainBadge.className = 'badge';
+            }
+            
+            // Format last rain
+            if (data.rainlast) {
+                const lastRain = data.rainlast.substr(6, 2) + '/' + 
+                               data.rainlast.substr(4, 2) + ' ' +
+                               data.rainlast.substr(8, 2) + ':' +
+                               data.rainlast.substr(10, 2);
+                document.getElementById('rainLast').textContent = lastRain;
+            }
+            
+            // Update charts
+            updateCharts(data, windDirTrend);
+            
+            // Update statistics
+            updateStats(data);
+            
+            // Update footer
+            const now = new Date();
+            document.getElementById('footerText').textContent = 
+                `Page refreshed at ${frmtTime(now.getHours())}:${frmtTime(now.getMinutes())}:${frmtTime(now.getSeconds())}`;
+            
+            // Show all content
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('header').style.display = 'block';
+            document.getElementById('mainGrid').style.display = 'grid';
+            document.getElementById('chartWind').style.display = 'block';
+            document.getElementById('chartDir').style.display = 'block';
+            document.getElementById('statsPanel').style.display = 'block';
+            document.getElementById('footer').style.display = 'block';
+        }
+
+        function updateCharts(data, windDirTrend) {
+            // Wind strength chart
+            const windTrace = {
+                y: data.windtrend,
+                mode: 'lines',
+                line: { color: '#667eea', width: 3 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(102, 126, 234, 0.1)'
+            };
+            
+            const windLayout = {
+                xaxis: {
+                    title: 'Minutes ago',
+                    showgrid: true,
+                    autorange: 'reversed',
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: {
+                    title: 'Strength (kts)',
+                    showgrid: true,
+                    gridcolor: '#e0e0e0',
+                    rangemode: 'tozero'
+                },
+                margin: { t: 10, l: 50, r: 20, b: 40 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#666' }
+            };
+            
+            Plotly.newPlot('windChart', [windTrace], windLayout, {
+                displayModeBar: false,
+                staticPlot: true
+            });
+            
+            // Wind direction chart
+            const dirTrace = {
+                y: windDirTrend,
+                mode: 'markers',
+                marker: { color: '#764ba2', size: 8 }
+            };
+            
+            const dirLayout = {
+                xaxis: {
+                    title: 'Minutes ago',
+                    showgrid: true,
+                    autorange: 'reversed',
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: {
+                    title: 'Direction (°M)',
+                    showgrid: true,
+                    gridcolor: '#e0e0e0',
+                    range: [0, 370],
+                    tickmode: 'array',
+                    tickvals: [0, 90, 180, 270, 360],
+                    ticktext: ['N/360°', '090°', '180°', '270°', 'N/360°']
+                },
+                margin: { t: 10, l: 50, r: 20, b: 40 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#666' }
+            };
+            
+            Plotly.newPlot('dirChart', [dirTrace], dirLayout, {
+                displayModeBar: false,
+                staticPlot: true
+            });
+        }
+
+        function updateStats(data) {
+            const statsGrid = document.getElementById('statsGrid');
+            
+            const stats = [
+                { label: 'Day Max Temp', value: Math.round(data.tempdm) + '°C' },
+                { label: 'Day Min Temp', value: Math.round(data.tempdmin) + '°C' },
+                { label: 'Month Max Temp', value: Math.round(data.tempmm) + '°C' },
+                { label: 'Year Max Temp', value: Math.round(data.tempym) + '°C' },
+                { label: 'Day Max Wind', value: data.winddm + ' kts' },
+                { label: 'Month Max Wind', value: data.windmm + ' kts' },
+                { label: 'Year Max Wind', value: data.windym + ' kts' },
+                { label: 'All-time Max Wind', value: data.windam + ' kts' },
+                { label: 'Day Rain', value: data.rainds + ' mm' },
+                { label: 'Month Rain', value: data.rainms + ' mm' },
+                { label: 'Year Rain', value: data.rainys + ' mm' },
+                { label: 'Day Max Press', value: Math.round(data.pressdm) + ' hPa' },
+                { label: 'Day Min Press', value: Math.round(data.pressdmin) + ' hPa' },
+                { label: 'Day Max Hum', value: Math.round(data.humdm) + '%' },
+                { label: 'Day Min Hum', value: Math.round(data.humdmin) + '%' }
+            ];
+            
+            statsGrid.innerHTML = stats.map(stat => `
+                <div class="stat-box">
+                    <div class="stat-label">${stat.label}</div>
+                    <div class="stat-value">${stat.value}</div>
+                </div>
+            `).join('');
+        }
+
+        // Fetch weather data
+        async function fetchWeatherData() {
+            try {
+                const response = await fetch(DATA_URL + '?t=' + new Date().getTime());
+                if (!response.ok) throw new Error('Failed to fetch weather data');
+                const data = await response.json();
+                updateUI(data);
+            } catch (error) {
+                console.error('Error fetching weather data:', error);
+                document.getElementById('loading').innerHTML = 
+                    `<div class="error">Error loading weather data: ${error.message}<br>Retrying...</div>`;
+            }
+        }
+
+        // Fetch notice data
+        async function fetchNotice() {
+            try {
+                const response = await fetch(NOTICE_URL + '?t=' + new Date().getTime());
+                if (response.ok) {
+                    const noticeData = await response.json();
+                    const noticeAge = Math.round((new Date() - new Date(noticeData.Time)) / 1000 / 60);
+                    
+                    if (noticeAge <= 180 && noticeData.NoticeText) {
+                        document.getElementById('noticeText').textContent = noticeData.NoticeText;
+                        document.getElementById('notice').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.log('No notice available');
+            }
+        }
+
+        // Fetch camera data
+        async function fetchCameras() {
+            try {
+                const response = await fetch(CAM_URL + '?t=' + new Date().getTime());
+                if (response.ok) {
+                    const camData = await response.json();
+                    const camDate = new Date(camData.TimeStamp);
+                    const deltaTime = new Date() - camDate;
+                    
+                    if (deltaTime < 15 * 60 * 1000 && camData.Cameras && camData.Cameras.length > 0) {
+                        const cameraGrid = document.getElementById('cameraGrid');
+                        const camBaseUrl = 'http://weather.nsac.co.nz/cams/';
+                        cameraGrid.innerHTML = camData.Cameras.map((cam, i) => `
+                            <div class="camera-card">
+                                <div class="camera-image" 
+                                     style="background-image: url('${camBaseUrl}${cam.LoResName}?t=${new Date().getTime()}')"
+                                     onclick="window.open('${camBaseUrl}${cam.HiResName}', '_blank')">
+                                </div>
+                                <div class="camera-label">${cam.CamName}</div>
+                            </div>
+                        `).join('');
+                        document.getElementById('cameraSection').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.log('No camera data available');
+            }
+        }
+
+        // Initialize
+        async function init() {
+            await fetchWeatherData();
+            await fetchNotice();
+            await fetchCameras();
+            
+            // Set up auto-refresh
+            updateTimer = setInterval(() => {
+                fetchWeatherData();
+                fetchNotice();
+                fetchCameras();
+            }, UPDATE_INTERVAL);
+        }
+
+        // Start when page loads
+        window.addEventListener('load', init);
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateTimer) clearInterval(updateTimer);
+        });
+    </script>
+</body>
+</html>

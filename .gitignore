@@ -1,0 +1,33 @@
+# Weather Monitor .gitignore
+
+# Database files
+weather_data.db
+weather_data.db-journal
+*.db
+*.db-journal
+
+# Log files
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Exports
+weather_export.csv
+*.csv
