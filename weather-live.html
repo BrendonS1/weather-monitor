@@ -359,8 +359,10 @@
 
         <!-- Notice (if active) -->
         <div class="notice">
-            <div class="notice-title">⚠️ NOTICE TO AIRMEN</div>
-            <div>Runway 03/21 temporarily closed for maintenance. Use runway 12/30 for all operations.</div>
+            <div class="notice-title">⚠️ NOTICES</div>
+            <div>Aircraft should join overhead.
+                <p>Caution increased bird activity.</p>
+                <p>All pilots must check operational NOTAMS at gopreflight.co.nz</p></div>
         </div>
 
         <!-- Main Weather Cards -->
@@ -480,24 +482,6 @@
             </div>
         </div>
 
-        <!-- Wind Trend Chart -->
-        <div class="chart-card card">
-            <div class="card-title">Wind Strength - Last 60 Minutes</div>
-            <div class="chart-placeholder">
-                📊 Interactive chart showing wind speed trend over time<br>
-                (Line graph: 0-30 kts range, time-series data)
-            </div>
-        </div>
-
-        <!-- Wind Direction Chart -->
-        <div class="chart-card card">
-            <div class="card-title">Wind Direction - Last 60 Minutes</div>
-            <div class="chart-placeholder">
-                🧭 Interactive chart showing wind direction variability<br>
-                (Scatter plot: 0-360° range, showing directional spread)
-            </div>
-        </div>
-
         <!-- Statistics Panel -->
         <div class="card" style="grid-column: 1 / -1;">
             <div class="card-title">Record Statistics</div>
@@ -550,25 +534,14 @@
         </div>
 
         <!-- Camera Feeds -->
-        <div style="grid-column: 1 / -1;">
-            <div class="card">
-                <div class="card-title">Weather Cameras</div>
-                <div class="camera-grid">
-                    <div class="camera-card">
-                        <div class="camera-image">📷 Runway 03/21 View</div>
-                        <div class="camera-label">Runway 03/21 - North View</div>
-                    </div>
-                    <div class="camera-card">
-                        <div class="camera-image">📷 Runway 12/30 View</div>
-                        <div class="camera-label">Runway 12/30 - East View</div>
-                    </div>
-                    <div class="camera-card">
-                        <div class="camera-image">📷 Windsock View</div>
-                        <div class="camera-label">Windsock - Central</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+      <div id="cameraSection" style="display: none;">
+       <div class="card">
+           <div class="card-title">Weather Cameras</div>
+           <div class="camera-grid" id="cameraGrid">
+               <!-- Cameras will load here -->
+           </div>
+       </div>
+      </div>
 
         <div class="footer">
             North Shore Airport (NZNE) • Weather Station System<br>
@@ -715,6 +688,68 @@
             fetchWeatherData();
             setInterval(fetchWeatherData, UPDATE_INTERVAL);
         });
+
+// Camera fetching function
+async function fetchCameras() {
+    try {
+        const response = await fetch(CAM_URL);
+        if (!response.ok) throw new Error('Failed to fetch camera info');
+        
+        const camData = await response.json();
+        console.log('Camera data loaded:', camData);
+        
+        const camDate = new Date(camData.TimeStamp);
+        const deltaTime = new Date() - camDate;
+        const ageMinutes = Math.round(deltaTime / 1000 / 60);
+        
+        console.log('Camera age:', ageMinutes, 'minutes');
+        
+        // Check if images are recent (less than 15 minutes old)
+        if (deltaTime < 15 * 60 * 1000 && camData.Cameras && camData.Cameras.length > 0) {
+            const cameraGrid = document.getElementById('cameraGrid');
+            if (!cameraGrid) {
+                console.error('cameraGrid element not found!');
+                return;
+            }
+            
+            // Build camera cards
+            cameraGrid.innerHTML = camData.Cameras.map((cam) => {
+                // Use proxy for images to avoid CORS
+                const loResUrl = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/cams/' + cam.LoResName);
+                const hiResUrl = 'http://weather.nsac.co.nz/cams/' + cam.HiResName;
+                
+                return `
+                    <div class="camera-card">
+                        <img src="${loResUrl}?t=${Date.now()}" 
+                             style="width: 100%; height: 250px; object-fit: cover; cursor: pointer; display: block;"
+                             onclick="window.open('${hiResUrl}', '_blank')"
+                             onerror="console.error('Failed to load image:', '${cam.LoResName}'); this.parentElement.style.display='none';"
+                             alt="${cam.CamName}">
+                        <div class="camera-label">${cam.CamName}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Show the camera section
+            const section = document.getElementById('cameraSection');
+            if (section) {
+                section.style.display = 'block';
+                console.log('✓ Displayed', camData.Cameras.length, 'camera(s)');
+            }
+        } else {
+            console.warn('Camera images too old or no cameras available');
+        }
+    } catch (error) {
+        console.error('Error fetching cameras:', error);
+    }
+}
+
+// Make sure this is called in your initialization
+// Find your existing window.addEventListener('load', ...) and add:
+fetchCameras();
+setInterval(fetchCameras, UPDATE_INTERVAL); // Refresh every 60 seconds
+
+
     </script>
 </body>
 </html>

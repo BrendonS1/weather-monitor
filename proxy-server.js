@@ -15,7 +15,20 @@ const ALLOWED_URLS = [
 ];
 
 function isAllowedUrl(targetUrl) {
-    return ALLOWED_URLS.some(allowed => targetUrl.startsWith(allowed));
+    // Allow exact matches
+    for (const allowed of ALLOWED_URLS) {
+        if (targetUrl === allowed || targetUrl.startsWith(allowed)) {
+            return true;
+        }
+    }
+    
+    // Specifically allow camera images (any .jpg in cams folder)
+    if (targetUrl.startsWith('http://weather.nsac.co.nz/cams/') && 
+        (targetUrl.includes('.jpg') || targetUrl.includes('.jpeg') || targetUrl.includes('.png'))) {
+        return true;
+    }
+    
+    return false;
 }
 
 const server = http.createServer((req, res) => {
@@ -53,19 +66,38 @@ const server = http.createServer((req, res) => {
     
     protocol.get(targetUrl, (proxyRes) => {
         let data = '';
+        let chunks = [];
+        let isBinary = false;
+
+        // Check if response is binary (images)
+        const contentType = proxyRes.headers['content-type'] || '';
+        if (contentType.includes('image/') || contentType.includes('application/octet-stream')) {
+            isBinary = true;
+        }
 
         proxyRes.on('data', (chunk) => {
-            data += chunk;
+            if (isBinary) {
+                chunks.push(chunk);
+            } else {
+                data += chunk;
+            }
         });
 
         proxyRes.on('end', () => {
-            res.writeHead(200, {
+            const headers = {
                 'Content-Type': proxyRes.headers['content-type'] || 'text/plain',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, OPTIONS',
                 'Cache-Control': 'no-cache'
-            });
-            res.end(data);
+            };
+
+            res.writeHead(200, headers);
+            
+            if (isBinary) {
+                res.end(Buffer.concat(chunks));
+            } else {
+                res.end(data);
+            }
         });
 
     }).on('error', (err) => {
