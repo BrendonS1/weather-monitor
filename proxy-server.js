@@ -5,7 +5,8 @@ const http = require('http');
 const https = require('https');
 const url = require('url');
 
-const PORT = 3000;
+// Render provides PORT via environment variable
+const PORT = process.env.PORT || 3000;
 
 const ALLOWED_URLS = [
     'http://weather.nsac.co.nz/NEmetData.txt',
@@ -111,9 +112,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-    console.log(`CORS proxy server running on http://localhost:${PORT}`);
-    console.log(`\nExample usage:`);
-    console.log(`http://localhost:${PORT}/?url=http://weather.nsac.co.nz/NEmetData.txt`);
+    console.log(`CORS proxy server running on port ${PORT}`);
     console.log(`\nAllowed URLs:`);
     ALLOWED_URLS.forEach(u => console.log(`  - ${u}`));
 });
