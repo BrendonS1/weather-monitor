@@ -1,0 +1,136 @@
+
+# WEATHER MONITOR PROJECT ARCHITECTURE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              USER'S BROWSER                                 │
+│                                                                             │
+│  Opens: https://weather-monitor-frontend-5e76.onrender.com                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      │ Downloads
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        STATIC SITE (Render)                                 │
+│                     weather-monitor-frontend                                │
+│                                                                             │
+│  Files Served:                                                              │
+│    - index.html  ← Your weather dashboard UI                               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      │ JavaScript in browser makes
+                                      │ fetch() requests every 60 seconds
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      WEB SERVICE (Render)                                   │
+│                     weather-monitor-proxy                                   │
+│                                                                             │
+│  File: proxy-server.js                                                      │
+│  Purpose: CORS proxy to bypass browser security                            │
+│  - Receives requests from frontend                                          │
+│  - Forwards them to weather.nsac.co.nz                                      │
+│  - Adds CORS headers so browser allows the response                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      │ Fetches fresh data
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    EXTERNAL WEATHER STATION                                 │
+│                   http://weather.nsac.co.nz                                 │
+│                                                                             │
+│  Files:                                                                     │
+│    - NEmetData.txt     ← Live weather data (JSON)                          │
+│    - awibexport.txt    ← AWIB notices                                      │
+│    - cams/CamInfo.txt  ← Camera info                                       │
+│    - cams/*.jpg        ← Camera images                                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+                    ═══════════════════════════════════
+                         COMPLETELY SEPARATE SYSTEM
+                         (Data Collection for Future)
+                    ═══════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    BACKGROUND WORKER (Render)                               │
+│                    weather-monitor-worker                                   │
+│                                                                             │
+│  File: weather_monitor.py                                                   │
+│  Purpose: Historical data collection                                        │
+│  - Runs continuously (every 30 seconds)                                     │
+│  - Fetches NEmetData.txt from weather.nsac.co.nz                           │
+│  - Stores it in PostgreSQL database                                         │
+│  - NOT connected to the frontend (yet!)                                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      │ Stores data
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    POSTGRESQL DATABASE (Render)                             │
+│                       weather-monitor-db                                    │
+│                                                                             │
+│  Tables:                                                                    │
+│    - weather_data         ← Stores each snapshot                           │
+│    - weather_readings     ← Parsed data (unused)                           │
+│    - weather_data_archive ← Old data (90+ days)                            │
+│                                                                             │
+│  Purpose: Historical data storage for future features                       │
+│  Status: Collecting data but NOT displayed anywhere yet                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+                              DATA FLOW SUMMARY
+================================================================================
+
+CURRENT LIVE DISPLAY (What users see now):
+┌──────────┐      ┌───────┐      ┌──────────┐      ┌─────────────┐
+│ Browser  │ ───> │ Proxy │ ───> │ nsac.co  │ ───> │ Live Data   │
+│ (index)  │ <─── │ Node  │ <─── │ .nz      │ <─── │ Displayed   │
+└──────────┘      └───────┘      └──────────┘      └─────────────┘
+   Every 60 seconds, fresh data from the weather station
+
+
+BACKGROUND DATA COLLECTION (Not displayed):
+┌──────────┐      ┌──────────┐      ┌────────────┐
+│ Python   │ ───> │ nsac.co  │      │ PostgreSQL │
+│ Worker   │      │ .nz      │ ───> │ Database   │
+└──────────┘      └──────────┘      └────────────┘
+   Every 30 seconds, saves snapshot for history
+
+
+FILES NOT CURRENTLY USED:
+- weather_viewer.py   ← Tool to view database contents (manual use only)
+- weather_data.db     ← Old SQLite file (replaced by PostgreSQL)
+
+
+================================================================================
+                           WHY IT'S SET UP THIS WAY
+================================================================================
+
+The PostgreSQL database is collecting historical data so you COULD add:
+  - Historical weather graphs (temperature over time, wind trends, etc.)
+  - 24-hour history charts
+  - Weather pattern analysis
+  - Downloadable historical data
+
+But right now, your frontend only shows LIVE data from the weather station.
+
+
+================================================================================
+                              TO ADD HISTORY CHARTS
+================================================================================
+
+You would need to create:
+1. New API endpoint in proxy-server.js (or separate Python API)
+2. Queries to PostgreSQL for historical data
+3. New charts in index.html using the Plotly library (already loaded!)
+4. Update frontend to fetch both live + historical data
+
+Would you like me to help you add historical weather charts to your dashboard?
+
