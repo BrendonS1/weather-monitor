@@ -379,23 +379,27 @@
                 <div class="card-detail">
                     <div class="card-detail-row">
                         <span class="card-detail-label">Current</span>
-                        <span class="card-detail-value">12 kts</span>
+                        <span class="card-detail-value" id="windCurrent"> kts</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Average</span>
-                        <span class="card-detail-value">10 kts</span>
+                        <span class="card-detail-value" id="windAvg"> kts</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Gust (10 min)</span>
-                        <span class="card-detail-value">18 kts</span>
+                        <span class="card-detail-value" id="windGust10"> kts</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Max (60 min)</span>
-                        <span class="card-detail-value">22 kts</span>
+                        <span class="card-detail-value" id="windMax60"> kts</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Variable</span>
-                        <span class="card-detail-value">190°v230°</span>
+                        <span class="card-detail-value" id="windVar"></span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Crosswind Component</span>
+                        <span class="card-detail-value" id="windCrosswind">-- - -- kts</span>
                     </div>
                 </div>
             </div>
@@ -623,6 +627,41 @@
             return frmtDir(fromDeg) + 'v' + frmtDir(toDeg);
         }
 
+        function calculateCrosswind(windSpeed, windDir) {
+            // Runway headings (magnetic)
+            const runway03 = 30;  // 030°
+            const runway21 = 210; // 210°
+            
+            // Calculate the difference to each runway
+            let diff03 = Math.abs(windDir - runway03);
+            let diff21 = Math.abs(windDir - runway21);
+            
+            // Handle wrap-around (e.g., 350° vs 010°)
+            if (diff03 > 180) diff03 = 360 - diff03;
+            if (diff21 > 180) diff21 = 360 - diff21;
+            
+            // Choose the runway with the smallest difference
+            let activeRunway, theta;
+            
+            if (diff03 <= diff21) {
+                activeRunway = '03';
+                theta = diff03;
+            } else {
+                activeRunway = '21';
+                theta = diff21;
+            }
+            
+            // Calculate crosswind component: V × sin(θ)
+            const thetaRadians = theta * (Math.PI / 180);
+            const crosswind = windSpeed * Math.sin(thetaRadians);
+            
+            return {
+                runway: activeRunway,
+                crosswind: Math.round(crosswind)
+            };
+        }
+
+
         async function fetchWeatherData() {
             try {
                 const response = await fetch(DATA_URL + '&_=' + new Date().getTime());
@@ -636,6 +675,13 @@
                 document.querySelector('.wind-arrow').style.transform = `rotate(${windDir}deg)`;
                 document.querySelector('.wind-direction').textContent = frmtDir(windDir) + '°';
                 
+                // Calculate and display crosswind component
+                const crosswindData = calculateCrosswind(Math.round(data.wind0avgwind), windDir);
+                const crosswindEl = document.getElementById('windCrosswind');
+                if (crosswindEl) {
+                    crosswindEl.textContent = `RWY${crosswindData.runway} / ${crosswindData.crosswind} kts`;
+                }
+
                 // Build METAR
                 const gustDiff = Math.round(data.wind0windmax10) - Math.round(data.wind0avgwind);
                 let metar = `NZNE ${frmtDir(windDir)}°M, ${Math.round(data.wind0avgwind)}`;
@@ -647,9 +693,43 @@
                     metar += ', Rain ' + (rainRate < 2.5 ? 'Light' : rainRate < 7.6 ? 'Moderate' : 'HEAVY');
                 }
                 
+                // Update Cards
+                document.getElementById('windCurrent').textContent = Math.round(data.wind0wind) + ' kts';
+                document.getElementById('windAvg').textContent = Math.round(data.wind0avgwind) + ' kts';
+                document.getElementById('windGust10').textContent = Math.round(data.wind0windmax10) + ' kts';
+                document.getElementById('windMax60').textContent = Math.round(data.wind0windmax60) + ' kts';
+                document.getElementById('windVar').textContent = directionRange(windDirTrend, 10);
+
                 document.querySelector('.metar').textContent = metar;
                 document.querySelector('.header').style.display = 'block';
                 
+                // Update timestamp in header
+                const sampleDate = new Date(
+                    data.currYYYY, 
+                    parseInt(data.currMM) - 1, 
+                    data.currDD, 
+                    data.currhh, 
+                    data.currmm, 
+                    0, 0
+                );
+                const dataAge = Math.round((new Date() - sampleDate) / 1000 / 60);
+
+                const timeTypeStr = timeType(data.currYYYY, data.currMM, data.currDD);
+                let timestampStr = `At ${frmtTime(data.currhh)}:${frmtTime(data.currmm)} ${timeTypeStr}`;
+                if (dataAge > 1) {
+                    timestampStr += ` • Updated ${dataAge} min ago`;
+                } else {
+                    timestampStr += ` • Just updated`;
+                }
+                document.querySelector('.timestamp').textContent = timestampStr;
+
+                // Update footer
+                const now = new Date();
+                document.querySelector('.footer').innerHTML = `
+                    North Shore Airport (NZNE) • Weather Station System<br>
+                    Page refreshed at ${frmtTime(now.getHours())}:${frmtTime(now.getMinutes())}:${frmtTime(now.getSeconds())}
+                `;
+
                 // Update charts if Plotly is loaded
                 if (typeof Plotly !== 'undefined') {
                     const windTrace = {
