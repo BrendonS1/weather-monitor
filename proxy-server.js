@@ -10,7 +10,8 @@ const PORT = 3000;
 const ALLOWED_URLS = [
     'http://weather.nsac.co.nz/NEmetData.txt',
     'http://weather.nsac.co.nz/awibexport.txt',
-    'http://weather.nsac.co.nz/cams/CamInfo.txt'
+    'http://weather.nsac.co.nz/cams/CamInfo.txt',
+    'http://weather.nsac.co.nz/cams/'  // Allow all camera images
 ];
 
 function isAllowedUrl(targetUrl) {

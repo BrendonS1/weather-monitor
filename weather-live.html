@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>North Shore Airport Weather - Live</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -13,8 +16,8 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #007e33 0%, #00b84d 100%);
             min-height: 100vh;
             padding: 20px;
             color: #333;
@@ -42,14 +45,14 @@
         }
 
         .header .metar {
-            font-family: 'Courier New', monospace;
-            font-size: 16px;
+            font-family: 'Roboto Condensed', 'Courier New', monospace;
+            font-size: 32px;
             color: #666;
             background: #f5f5f5;
             padding: 12px 20px;
             border-radius: 10px;
             margin-top: 15px;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #007e33;
         }
 
         .header .timestamp {
@@ -130,12 +133,12 @@
             height: 200px;
             margin: 20px auto;
             position: relative;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #007e33 0%, #00b84d 100%);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 126, 51, 0.4);
         }
 
         .wind-compass::before {
@@ -150,21 +153,57 @@
         .wind-arrow {
             position: relative;
             z-index: 1;
-            font-size: 80px;
-            transition: transform 0.5s ease;
+            font-size: 100px;
+            transform: rotate(210deg);
         }
 
         .wind-direction {
             position: absolute;
+            top: 10%;
             font-size: 24px;
             font-weight: 700;
-            color: #667eea;
+            color: #007e33;
             z-index: 2;
         }
 
+        .runway-indicator {
+            position: absolute;
+            width: 12px;
+            height: 140px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            z-index: 0;
+            transform: rotate(30deg); /* 030° heading */
+        }
+
+        .runway-indicator-secondary {
+            position: absolute;
+            width: 7.2px; /* 60% of 12px */
+            height: 98px; /* 70% of 140px */
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            z-index: 0;
+            transform: rotate(90deg); /* 090° heading */
+        }
+
+
         .chart-card {
             grid-column: 1 / -1;
-            min-height: 350px;
+            min-height: 300px;
+        }
+
+        .chart-placeholder {
+            width: 100%;
+            height: 250px;
+            background: linear-gradient(to bottom, rgba(0, 126, 51, 0.1) 0%, rgba(0, 126, 51, 0.05) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 14px;
+            margin-top: 15px;
+            border: 2px dashed #ddd;
         }
 
         .stats-grid {
@@ -202,7 +241,6 @@
             border-radius: 20px;
             margin-bottom: 20px;
             box-shadow: 0 20px 60px rgba(245, 87, 108, 0.4);
-            display: none;
         }
 
         .notice-title {
@@ -214,27 +252,12 @@
         .badge {
             display: inline-block;
             padding: 6px 12px;
-            background: rgba(102, 126, 234, 0.2);
-            color: #667eea;
+            background: rgba(0, 126, 51, 0.2);
+            color: #007e33;
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
             margin-top: 10px;
-        }
-
-        .badge.rain-light {
-            background: rgba(76, 175, 80, 0.2);
-            color: #4CAF50;
-        }
-
-        .badge.rain-moderate {
-            background: rgba(255, 152, 0, 0.2);
-            color: #FF9800;
-        }
-
-        .badge.rain-heavy {
-            background: rgba(244, 67, 54, 0.2);
-            color: #F44336;
         }
 
         .camera-grid {
@@ -254,10 +277,12 @@
         .camera-image {
             width: 100%;
             height: 250px;
-            background-size: cover;
-            background-position: center;
-            position: relative;
-            cursor: pointer;
+            background: linear-gradient(135deg, #007e33 0%, #00b84d 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
         }
 
         .camera-label {
@@ -291,35 +316,26 @@
             50% { opacity: 0.5; }
         }
 
+        .trend-up {
+            color: #f5576c;
+        }
+
+        .trend-down {
+            color: #4CAF50;
+        }
+
         .footer {
             text-align: center;
             padding: 20px;
             color: rgba(255, 255, 255, 0.8);
             font-size: 14px;
         }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: white;
-            font-size: 18px;
-        }
-
-        .error {
-            background: rgba(244, 67, 54, 0.9);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="loading" id="loading">Loading weather data...</div>
-        
         <!-- Header with METAR -->
-        <div class="header" id="header" style="display: none;">
+        <div class="header">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                 <div>
                     <h1>🛩️ North Shore Airport Weather</h1>
@@ -330,52 +346,54 @@
                 </div>
                 <div style="text-align: right;">
                     <div style="font-size: 14px; color: #888; margin-bottom: 5px;">NZNE</div>
-                    <div style="font-size: 24px; font-weight: 700; color: #667eea;" id="headerDir">---°</div>
+                    <div style="font-size: 24px; font-weight: 700; color: #007e33;">210° M</div>
                 </div>
             </div>
-            <div class="metar" id="metar">
-                Loading...
+            <div class="metar">
+                NZNE 210°M, 12G18 kts, 1015 hPa, 18/12°C
             </div>
-            <div class="timestamp" id="timestamp">
-                Initializing...
+            <div class="timestamp">
+                At 14:25 NZDT • Updated 2 mins ago
             </div>
         </div>
 
         <!-- Notice (if active) -->
-        <div class="notice" id="notice">
+        <div class="notice">
             <div class="notice-title">⚠️ NOTICE TO AIRMEN</div>
-            <div id="noticeText"></div>
+            <div>Runway 03/21 temporarily closed for maintenance. Use runway 12/30 for all operations.</div>
         </div>
 
         <!-- Main Weather Cards -->
-        <div class="grid" id="mainGrid" style="display: none;">
+        <div class="grid">
             <!-- Wind Card -->
             <div class="card">
                 <div class="card-title">Wind</div>
                 <div class="wind-compass">
-                    <div class="wind-arrow" id="windArrow">↑</div>
-                    <div class="wind-direction" id="windDirDisplay">---°</div>
+                    <div class="runway-indicator"></div>
+                    <div class="runway-indicator-secondary"></div>
+                    <div class="wind-arrow">↑</div>
+                    <div class="wind-direction">210°</div>
                 </div>
                 <div class="card-detail">
                     <div class="card-detail-row">
                         <span class="card-detail-label">Current</span>
-                        <span class="card-detail-value" id="windCurrent">-- kts</span>
+                        <span class="card-detail-value">12 kts</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Average</span>
-                        <span class="card-detail-value" id="windAvg">-- kts</span>
+                        <span class="card-detail-value">10 kts</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Gust (10 min)</span>
-                        <span class="card-detail-value" id="windGust10">-- kts</span>
+                        <span class="card-detail-value">18 kts</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Max (60 min)</span>
-                        <span class="card-detail-value" id="windMax60">-- kts</span>
+                        <span class="card-detail-value">22 kts</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Variable</span>
-                        <span class="card-detail-value" id="windVar">---</span>
+                        <span class="card-detail-value">190°v230°</span>
                     </div>
                 </div>
             </div>
@@ -384,24 +402,25 @@
             <div class="card">
                 <div class="card-title">Temperature</div>
                 <div class="card-value">
-                    <span id="tempCurrent">--</span><span class="card-unit">°C</span>
+                    18<span class="card-unit">°C</span>
                 </div>
+                <div class="badge">Feels like 17°C</div>
                 <div class="card-detail">
                     <div class="card-detail-row">
                         <span class="card-detail-label">Dew Point</span>
-                        <span class="card-detail-value" id="tempDew">--°C</span>
+                        <span class="card-detail-value">12°C</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Humidity</span>
-                        <span class="card-detail-value" id="tempHum">--%</span>
+                        <span class="card-detail-value">68%</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Today's High</span>
-                        <span class="card-detail-value" id="tempDayMax">--°C at --:--</span>
+                        <span class="card-detail-value">21°C at 13:15</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Today's Low</span>
-                        <span class="card-detail-value" id="tempDayMin">--°C at --:--</span>
+                        <span class="card-detail-value">14°C at 06:30</span>
                     </div>
                 </div>
             </div>
@@ -410,24 +429,25 @@
             <div class="card">
                 <div class="card-title">Pressure</div>
                 <div class="card-value">
-                    <span id="pressSea">----</span><span class="card-unit">hPa</span>
+                    1015<span class="card-unit">hPa</span>
                 </div>
+                <div class="badge trend-up">↑ Rising</div>
                 <div class="card-detail">
                     <div class="card-detail-row">
                         <span class="card-detail-label">Sea Level</span>
-                        <span class="card-detail-value" id="pressSeaDetail">---- hPa</span>
+                        <span class="card-detail-value">1015 hPa</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Station</span>
-                        <span class="card-detail-value" id="pressStation">---- hPa</span>
+                        <span class="card-detail-value">1013 hPa</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Today's High</span>
-                        <span class="card-detail-value" id="pressDayMax">---- hPa</span>
+                        <span class="card-detail-value">1018 hPa</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Today's Low</span>
-                        <span class="card-detail-value" id="pressDayMin">---- hPa</span>
+                        <span class="card-detail-value">1012 hPa</span>
                     </div>
                 </div>
             </div>
@@ -436,63 +456,123 @@
             <div class="card">
                 <div class="card-title">Rainfall</div>
                 <div class="card-value">
-                    <span id="rainRate">-.-</span><span class="card-unit">mm/hr</span>
+                    0.0<span class="card-unit">mm</span>
                 </div>
-                <div class="badge" id="rainBadge">No Rain</div>
+                <div class="badge">No Rain</div>
                 <div class="card-detail">
                     <div class="card-detail-row">
-                        <span class="card-detail-label">Total Today</span>
-                        <span class="card-detail-value" id="rainToday">-.-- mm</span>
+                        <span class="card-detail-label">Rate</span>
+                        <span class="card-detail-value">0.0 mm/hr</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Today</span>
+                        <span class="card-detail-value">0.0 mm</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">This Month</span>
-                        <span class="card-detail-value" id="rainMonth">-.-- mm</span>
-                    </div>
-                    <div class="card-detail-row">
-                        <span class="card-detail-label">This Year</span>
-                        <span class="card-detail-value" id="rainYear">-.-- mm</span>
+                        <span class="card-detail-value">45.2 mm</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Last Rain</span>
-                        <span class="card-detail-value" id="rainLast">--/-- --:--</span>
+                        <span class="card-detail-value">12/02 14:30</span>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Wind Trend Chart -->
-        <div class="chart-card card" id="chartWind" style="display: none;">
+        <div class="chart-card card">
+            <div class="card-title">Wind Strength - Last 60 Minutes</div>
+            <div class="chart-placeholder">
+                📊 Interactive chart showing wind speed trend over time<br>
+                (Line graph: 0-30 kts range, time-series data)
+            </div>
+        </div>
+
+        <!-- Wind Direction Chart -->
+        <div class="chart-card card">
+            <div class="card-title">Wind Direction - Last 60 Minutes</div>
+            <div class="chart-placeholder">
+                🧭 Interactive chart showing wind direction variability<br>
+                (Scatter plot: 0-360° range, showing directional spread)
+            </div>
+        </div>
+
+        <!-- Statistics Panel -->
+        <div class="card" style="grid-column: 1 / -1;">
+            <div class="card-title">Record Statistics</div>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Day Max Temp</div>
+                    <div class="stat-value">21°C</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Day Min Temp</div>
+                    <div class="stat-value">14°C</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Month Max</div>
+                    <div class="stat-value">28°C</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Year Max</div>
+                    <div class="stat-value">32°C</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Day Max Wind</div>
+                    <div class="stat-value">22 kts</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Month Max Wind</div>
+                    <div class="stat-value">35 kts</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Day Rain</div>
+                    <div class="stat-value">0.0 mm</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Month Rain</div>
+                    <div class="stat-value">45.2 mm</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wind Trend Chart -->
+        <div class="chart-card card" style="grid-column: 1 / -1;">
             <div class="card-title">Wind Strength - Last 60 Minutes</div>
             <div id="windChart" style="width: 100%; height: 300px;"></div>
         </div>
 
         <!-- Wind Direction Chart -->
-        <div class="chart-card card" id="chartDir" style="display: none;">
+        <div class="chart-card card" style="grid-column: 1 / -1;">
             <div class="card-title">Wind Direction - Last 60 Minutes</div>
             <div id="dirChart" style="width: 100%; height: 300px;"></div>
         </div>
 
-        <!-- Statistics Panel -->
-        <div class="card" id="statsPanel" style="display: none; grid-column: 1 / -1;">
-            <div class="card-title">Record Statistics</div>
-            <div class="stats-grid" id="statsGrid">
-                <!-- Stats will be populated here -->
-            </div>
-        </div>
-
         <!-- Camera Feeds -->
-        <div id="cameraSection" style="display: none; grid-column: 1 / -1;">
+        <div style="grid-column: 1 / -1;">
             <div class="card">
                 <div class="card-title">Weather Cameras</div>
-                <div class="camera-grid" id="cameraGrid">
-                    <!-- Cameras will be populated here -->
+                <div class="camera-grid">
+                    <div class="camera-card">
+                        <div class="camera-image">📷 Runway 03/21 View</div>
+                        <div class="camera-label">Runway 03/21 - North View</div>
+                    </div>
+                    <div class="camera-card">
+                        <div class="camera-image">📷 Runway 12/30 View</div>
+                        <div class="camera-label">Runway 12/30 - East View</div>
+                    </div>
+                    <div class="camera-card">
+                        <div class="camera-image">📷 Windsock View</div>
+                        <div class="camera-label">Windsock - Central</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="footer" id="footer" style="display: none;">
+        <div class="footer">
             North Shore Airport (NZNE) • Weather Station System<br>
-            <span id="footerText">Data updated every minute</span>
+            Data updated every minute • Page refreshed at 14:25:32
         </div>
     </div>
 
@@ -502,21 +582,18 @@
         const DATA_URL = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/NEmetData.txt');
         const NOTICE_URL = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/awibexport.txt');
         const CAM_URL = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/cams/CamInfo.txt');
-        const UPDATE_INTERVAL = 60000; // 60 seconds
+        const UPDATE_INTERVAL = 60000;
 
         let metData = null;
         let updateTimer = null;
 
-        // Utility functions
         function t2m(degT) {
-            // Convert true to magnetic (NZNE variation -19°)
             let degM = degT - 19;
             if (degM < 0) degM += 360;
             return degM;
         }
 
         function frmtDir(dir) {
-            // Format direction: round to nearest 10, show 360 if 0, pad with zeros
             let i = 10 * Math.round(dir / 10);
             if (i === 0) i = 360;
             if (i === 370) i = 10;
@@ -528,17 +605,12 @@
         }
 
         function timeType(yyyy, mm, dd) {
-            // Determine NZST or NZDT based on daylight saving rules
             const y = parseInt(yyyy);
             const m = parseInt(mm);
             const d = parseInt(dd);
-            
             let dayLightSaving = false;
-            
             if (m < 4 || m > 9) dayLightSaving = true;
-            
             if (m === 4 && d <= 7) {
-                // First week in April - find first Sunday
                 for (let dTmp = 1; dTmp <= 7; dTmp++) {
                     if (new Date(y, m - 1, dTmp).getDay() === 0) {
                         if (d <= dTmp) dayLightSaving = true;
@@ -546,9 +618,7 @@
                     }
                 }
             }
-            
             if (m === 9 && d >= 24) {
-                // Last week in Sept - find last Sunday
                 for (let dTmp = 24; dTmp <= 30; dTmp++) {
                     if (new Date(y, m - 1, dTmp).getDay() === 0) {
                         if (d >= dTmp) dayLightSaving = true;
@@ -556,368 +626,94 @@
                     }
                 }
             }
-            
             return dayLightSaving ? 'NZDT' : 'NZST';
         }
 
         function directionRange(vals, numVals) {
-            // Calculate wind direction range
             const pts = {};
             for (let i = 0; i < 360; i++) pts[i] = 0;
-            
             for (let i = 0; i < numVals && i < vals.length; i++) {
                 pts[Math.round(vals[i])]++;
             }
-            
-            let maxGap = 0;
-            let maxGapEnd = 0;
-            let currGap = 0;
-            
+            let maxGap = 0, maxGapEnd = 0, currGap = 0;
             for (let i = 0; i < 720; i++) {
                 const ptr = i % 360;
                 if (pts[ptr] === 0) {
                     currGap++;
-                    if (currGap > maxGap) {
-                        maxGap = currGap;
-                        maxGapEnd = ptr;
-                    }
-                } else {
-                    currGap = 0;
-                }
+                    if (currGap > maxGap) { maxGap = currGap; maxGapEnd = ptr; }
+                } else { currGap = 0; }
             }
-            
-            if (maxGap < 120 || maxGap > 359 || numVals < 2) {
-                return 'n/a';
-            }
-            
+            if (maxGap < 120 || maxGap > 359 || numVals < 2) return 'n/a';
             let fromDeg = maxGapEnd;
             let toDeg = maxGapEnd - maxGap;
             if (toDeg < 0) toDeg += 360;
-            
             return frmtDir(fromDeg) + 'v' + frmtDir(toDeg);
         }
 
-        // Update UI with weather data
-        function updateUI(data) {
-            metData = data;
-            
-            // Convert wind directions to magnetic
-            const windDir = t2m(data.wind0dir);
-            const windDirMin = t2m(data.wind0dirmin10);
-            const windDirMax = t2m(data.wind0dirmax10);
-            
-            // Convert direction trend array
-            const windDirTrend = data.winddirtrend.map(d => t2m(d));
-            
-            // Update header
-            document.getElementById('headerDir').textContent = frmtDir(windDir) + '° M';
-            
-            // Build METAR-style string
-            const gustDiff = Math.round(data.wind0windmax10) - Math.round(data.wind0avgwind);
-            let metarStr = `NZNE ${frmtDir(windDir)}°M, ${Math.round(data.wind0avgwind)}`;
-            if (gustDiff > 5) {
-                metarStr += `G${Math.round(data.wind0windmax10)}`;
-            }
-            metarStr += ` kts, ${Math.round(data.thb0seapress)} hPa, ${Math.round(data.th0temp)}/${Math.round(data.th0dew)}°C`;
-            
-            // Add rain if present
-            if (data.rain0rate > 0) {
-                let rainTxt = ', Rain ';
-                if (data.rain0rate < 2.5) rainTxt += 'Light';
-                else if (data.rain0rate < 7.6) rainTxt += 'Moderate';
-                else rainTxt += 'HEAVY';
-                metarStr += rainTxt;
-            }
-            
-            document.getElementById('metar').textContent = metarStr;
-            
-            // Calculate data age
-            const sampleDate = new Date(
-                data.currYYYY, 
-                parseInt(data.currMM) - 1, 
-                data.currDD, 
-                data.currhh, 
-                data.currmm, 
-                0, 0
-            );
-            const dataAge = Math.round((new Date() - sampleDate) / 1000 / 60);
-            
-            const timeTypeStr = timeType(data.currYYYY, data.currMM, data.currDD);
-            let timestampStr = `At ${frmtTime(data.currhh)}:${frmtTime(data.currmm)} ${timeTypeStr}`;
-            if (dataAge > 1) {
-                timestampStr += ` • Updated ${dataAge} min ago`;
-            } else {
-                timestampStr += ` • Just updated`;
-            }
-            document.getElementById('timestamp').textContent = timestampStr;
-            
-            // Update wind card
-            document.getElementById('windCurrent').textContent = Math.round(data.wind0wind) + ' kts';
-            document.getElementById('windAvg').textContent = Math.round(data.wind0avgwind) + ' kts';
-            document.getElementById('windGust10').textContent = Math.round(data.wind0windmax10) + ' kts';
-            document.getElementById('windMax60').textContent = Math.round(data.wind0windmax60) + ' kts';
-            document.getElementById('windDirDisplay').textContent = frmtDir(windDir) + '°';
-            document.getElementById('windVar').textContent = directionRange(windDirTrend, 10);
-            
-            // Rotate wind arrow
-            const arrow = document.getElementById('windArrow');
-            arrow.style.transform = `rotate(${windDir}deg)`;
-            
-            // Update temperature card
-            document.getElementById('tempCurrent').textContent = Math.round(data.th0temp);
-            document.getElementById('tempDew').textContent = Math.round(data.th0dew) + '°C';
-            document.getElementById('tempHum').textContent = Math.round(data.th0hum) + '%';
-            
-            if (data.tempdmt) {
-                const maxTime = data.tempdmt.substr(8, 2) + ':' + data.tempdmt.substr(10, 2);
-                document.getElementById('tempDayMax').textContent = Math.round(data.tempdm) + '°C at ' + maxTime;
-            }
-            if (data.tempdmint) {
-                const minTime = data.tempdmint.substr(8, 2) + ':' + data.tempdmint.substr(10, 2);
-                document.getElementById('tempDayMin').textContent = Math.round(data.tempdmin) + '°C at ' + minTime;
-            }
-            
-            // Update pressure card
-            document.getElementById('pressSea').textContent = Math.round(data.thb0seapress);
-            document.getElementById('pressSeaDetail').textContent = Math.round(data.thb0seapress) + ' hPa';
-            document.getElementById('pressStation').textContent = Math.round(data.thb0press) + ' hPa';
-            document.getElementById('pressDayMax').textContent = Math.round(data.pressdm) + ' hPa';
-            document.getElementById('pressDayMin').textContent = Math.round(data.pressdmin) + ' hPa';
-            
-            // Update rain card
-            document.getElementById('rainRate').textContent = data.rain0rate.toFixed(1);
-            document.getElementById('rainToday').textContent = data.rainds + ' mm';
-            document.getElementById('rainMonth').textContent = data.rainms + ' mm';
-            document.getElementById('rainYear').textContent = data.rainys + ' mm';
-            
-            // Update rain badge
-            const rainBadge = document.getElementById('rainBadge');
-            if (data.rain0rate > 0) {
-                rainBadge.classList.remove('rain-light', 'rain-moderate', 'rain-heavy');
-                if (data.rain0rate < 2.5) {
-                    rainBadge.textContent = 'Light Rain';
-                    rainBadge.classList.add('rain-light');
-                } else if (data.rain0rate < 7.6) {
-                    rainBadge.textContent = 'Moderate Rain';
-                    rainBadge.classList.add('rain-moderate');
-                } else {
-                    rainBadge.textContent = 'HEAVY Rain';
-                    rainBadge.classList.add('rain-heavy');
-                }
-            } else {
-                rainBadge.textContent = 'No Rain';
-                rainBadge.className = 'badge';
-            }
-            
-            // Format last rain
-            if (data.rainlast) {
-                const lastRain = data.rainlast.substr(6, 2) + '/' + 
-                               data.rainlast.substr(4, 2) + ' ' +
-                               data.rainlast.substr(8, 2) + ':' +
-                               data.rainlast.substr(10, 2);
-                document.getElementById('rainLast').textContent = lastRain;
-            }
-            
-            // Update charts
-            updateCharts(data, windDirTrend);
-            
-            // Update statistics
-            updateStats(data);
-            
-            // Update footer
-            const now = new Date();
-            document.getElementById('footerText').textContent = 
-                `Page refreshed at ${frmtTime(now.getHours())}:${frmtTime(now.getMinutes())}:${frmtTime(now.getSeconds())}`;
-            
-            // Show all content
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('header').style.display = 'block';
-            document.getElementById('mainGrid').style.display = 'grid';
-            document.getElementById('chartWind').style.display = 'block';
-            document.getElementById('chartDir').style.display = 'block';
-            document.getElementById('statsPanel').style.display = 'block';
-            document.getElementById('footer').style.display = 'block';
-        }
-
-        function updateCharts(data, windDirTrend) {
-            // Wind strength chart
-            const windTrace = {
-                y: data.windtrend,
-                mode: 'lines',
-                line: { color: '#667eea', width: 3 },
-                fill: 'tozeroy',
-                fillcolor: 'rgba(102, 126, 234, 0.1)'
-            };
-            
-            const windLayout = {
-                xaxis: {
-                    title: 'Minutes ago',
-                    showgrid: true,
-                    autorange: 'reversed',
-                    gridcolor: '#e0e0e0'
-                },
-                yaxis: {
-                    title: 'Strength (kts)',
-                    showgrid: true,
-                    gridcolor: '#e0e0e0',
-                    rangemode: 'tozero'
-                },
-                margin: { t: 10, l: 50, r: 20, b: 40 },
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                font: { color: '#666' }
-            };
-            
-            Plotly.newPlot('windChart', [windTrace], windLayout, {
-                displayModeBar: false,
-                staticPlot: true
-            });
-            
-            // Wind direction chart
-            const dirTrace = {
-                y: windDirTrend,
-                mode: 'markers',
-                marker: { color: '#764ba2', size: 8 }
-            };
-            
-            const dirLayout = {
-                xaxis: {
-                    title: 'Minutes ago',
-                    showgrid: true,
-                    autorange: 'reversed',
-                    gridcolor: '#e0e0e0'
-                },
-                yaxis: {
-                    title: 'Direction (°M)',
-                    showgrid: true,
-                    gridcolor: '#e0e0e0',
-                    range: [0, 370],
-                    tickmode: 'array',
-                    tickvals: [0, 90, 180, 270, 360],
-                    ticktext: ['N/360°', '090°', '180°', '270°', 'N/360°']
-                },
-                margin: { t: 10, l: 50, r: 20, b: 40 },
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                font: { color: '#666' }
-            };
-            
-            Plotly.newPlot('dirChart', [dirTrace], dirLayout, {
-                displayModeBar: false,
-                staticPlot: true
-            });
-        }
-
-        function updateStats(data) {
-            const statsGrid = document.getElementById('statsGrid');
-            
-            const stats = [
-                { label: 'Day Max Temp', value: Math.round(data.tempdm) + '°C' },
-                { label: 'Day Min Temp', value: Math.round(data.tempdmin) + '°C' },
-                { label: 'Month Max Temp', value: Math.round(data.tempmm) + '°C' },
-                { label: 'Year Max Temp', value: Math.round(data.tempym) + '°C' },
-                { label: 'Day Max Wind', value: data.winddm + ' kts' },
-                { label: 'Month Max Wind', value: data.windmm + ' kts' },
-                { label: 'Year Max Wind', value: data.windym + ' kts' },
-                { label: 'All-time Max Wind', value: data.windam + ' kts' },
-                { label: 'Day Rain', value: data.rainds + ' mm' },
-                { label: 'Month Rain', value: data.rainms + ' mm' },
-                { label: 'Year Rain', value: data.rainys + ' mm' },
-                { label: 'Day Max Press', value: Math.round(data.pressdm) + ' hPa' },
-                { label: 'Day Min Press', value: Math.round(data.pressdmin) + ' hPa' },
-                { label: 'Day Max Hum', value: Math.round(data.humdm) + '%' },
-                { label: 'Day Min Hum', value: Math.round(data.humdmin) + '%' }
-            ];
-            
-            statsGrid.innerHTML = stats.map(stat => `
-                <div class="stat-box">
-                    <div class="stat-label">${stat.label}</div>
-                    <div class="stat-value">${stat.value}</div>
-                </div>
-            `).join('');
-        }
-
-        // Fetch weather data
         async function fetchWeatherData() {
             try {
-                const response = await fetch(DATA_URL + '?t=' + new Date().getTime());
-                if (!response.ok) throw new Error('Failed to fetch weather data');
+                const response = await fetch(DATA_URL + '&_=' + new Date().getTime());
+                if (!response.ok) throw new Error('Failed to fetch');
                 const data = await response.json();
-                updateUI(data);
-            } catch (error) {
-                console.error('Error fetching weather data:', error);
-                document.getElementById('loading').innerHTML = 
-                    `<div class="error">Error loading weather data: ${error.message}<br>Retrying...</div>`;
-            }
-        }
-
-        // Fetch notice data
-        async function fetchNotice() {
-            try {
-                const response = await fetch(NOTICE_URL + '?t=' + new Date().getTime());
-                if (response.ok) {
-                    const noticeData = await response.json();
-                    const noticeAge = Math.round((new Date() - new Date(noticeData.Time)) / 1000 / 60);
-                    
-                    if (noticeAge <= 180 && noticeData.NoticeText) {
-                        document.getElementById('noticeText').textContent = noticeData.NoticeText;
-                        document.getElementById('notice').style.display = 'block';
-                    }
+                
+                const windDir = t2m(data.wind0dir);
+                const windDirTrend = data.winddirtrend.map(d => t2m(d));
+                
+                // Update all displays
+                document.querySelector('.wind-arrow').style.transform = `rotate(${windDir}deg)`;
+                document.querySelector('.wind-direction').textContent = frmtDir(windDir) + '°';
+                
+                // Build METAR
+                const gustDiff = Math.round(data.wind0windmax10) - Math.round(data.wind0avgwind);
+                let metar = `NZNE ${frmtDir(windDir)}°M, ${Math.round(data.wind0avgwind)}`;
+                if (gustDiff > 5) metar += `G${Math.round(data.wind0windmax10)}`;
+                metar += ` kts, ${Math.round(data.thb0seapress)} hPa, ${Math.round(data.th0temp)}/${Math.round(data.th0dew)}°C`;
+                
+                const rainRate = parseFloat(data.rain0rate || 0);
+                if (rainRate > 0) {
+                    metar += ', Rain ' + (rainRate < 2.5 ? 'Light' : rainRate < 7.6 ? 'Moderate' : 'HEAVY');
                 }
-            } catch (error) {
-                console.log('No notice available');
-            }
-        }
-
-        // Fetch camera data
-        async function fetchCameras() {
-            try {
-                const response = await fetch(CAM_URL + '?t=' + new Date().getTime());
-                if (response.ok) {
-                    const camData = await response.json();
-                    const camDate = new Date(camData.TimeStamp);
-                    const deltaTime = new Date() - camDate;
+                
+                document.querySelector('.metar').textContent = metar;
+                document.querySelector('.header').style.display = 'block';
+                
+                // Update charts if Plotly is loaded
+                if (typeof Plotly !== 'undefined') {
+                    const windTrace = {
+                        y: data.windtrend,
+                        mode: 'lines',
+                        line: { color: '#007e33', width: 3 },
+                        fill: 'tozeroy',
+                        fillcolor: 'rgba(0, 126, 51, 0.1)'
+                    };
+                    Plotly.newPlot('windChart', [windTrace], {
+                        xaxis: { title: 'Minutes ago', autorange: 'reversed', gridcolor: '#e0e0e0' },
+                        yaxis: { title: 'Strength (kts)', rangemode: 'tozero', gridcolor: '#e0e0e0' },
+                        margin: { t: 10, l: 50, r: 20, b: 40 },
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        plot_bgcolor: 'rgba(0,0,0,0)',
+                        font: { color: '#666', family: 'Roboto Condensed' }
+                    }, { displayModeBar: false, staticPlot: true });
                     
-                    if (deltaTime < 15 * 60 * 1000 && camData.Cameras && camData.Cameras.length > 0) {
-                        const cameraGrid = document.getElementById('cameraGrid');
-                        const camBaseUrl = 'http://weather.nsac.co.nz/cams/';
-                        cameraGrid.innerHTML = camData.Cameras.map((cam, i) => `
-                            <div class="camera-card">
-                                <div class="camera-image" 
-                                     style="background-image: url('${camBaseUrl}${cam.LoResName}?t=${new Date().getTime()}')"
-                                     onclick="window.open('${camBaseUrl}${cam.HiResName}', '_blank')">
-                                </div>
-                                <div class="camera-label">${cam.CamName}</div>
-                            </div>
-                        `).join('');
-                        document.getElementById('cameraSection').style.display = 'block';
-                    }
+                    const dirTrace = { y: windDirTrend, mode: 'markers', marker: { color: '#007e33', size: 8 } };
+                    Plotly.newPlot('dirChart', [dirTrace], {
+                        xaxis: { title: 'Minutes ago', autorange: 'reversed', gridcolor: '#e0e0e0' },
+                        yaxis: { title: 'Direction (°M)', range: [0, 370], tickvals: [0, 90, 180, 270, 360] },
+                        margin: { t: 10, l: 50, r: 20, b: 40 },
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        plot_bgcolor: 'rgba(0,0,0,0)',
+                        font: { color: '#666', family: 'Roboto Condensed' }
+                    }, { displayModeBar: false, staticPlot: true });
                 }
+                
             } catch (error) {
-                console.log('No camera data available');
+                console.error('Error:', error);
             }
         }
 
-        // Initialize
-        async function init() {
-            await fetchWeatherData();
-            await fetchNotice();
-            await fetchCameras();
-            
-            // Set up auto-refresh
-            updateTimer = setInterval(() => {
-                fetchWeatherData();
-                fetchNotice();
-                fetchCameras();
-            }, UPDATE_INTERVAL);
-        }
-
-        // Start when page loads
-        window.addEventListener('load', init);
-        
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', () => {
-            if (updateTimer) clearInterval(updateTimer);
+        window.addEventListener('load', () => {
+            fetchWeatherData();
+            setInterval(fetchWeatherData, UPDATE_INTERVAL);
         });
     </script>
 </body>
