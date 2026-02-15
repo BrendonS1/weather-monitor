@@ -39,7 +39,7 @@ const server = http.createServer(async (req, res) => {
         const result = await pool.query(
             `SELECT device_local_ts, wind_avg, wind_xwind
              FROM weather_update
-             WHERE device_local_ts >= NOW() - INTERVAL '60 minutes'
+             WHERE device_utc_ts >= NOW() - INTERVAL '60 minutes'
              ORDER BY device_local_ts ASC`
         );
 
