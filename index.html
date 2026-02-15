@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>North Shore Airport Weather - Live</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛩️</text></svg>">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -762,10 +763,10 @@ async function fetchWeatherData() {
 
         // Update browser title bar with live weather
         if (stale) {
-            document.title = '🛩️ NZNE — NO DATA';
+            document.title = 'NZNE — NO DATA';
         } else {
             const gustDiffTitle = Math.round(data.wind0windmax10) - Math.round(data.wind0avgwind);
-            let title = `🛩️ NZNE ${frmtDir(windDir)}/${Math.round(data.wind0avgwind)}`;
+            let title = `NZNE ${frmtDir(windDir)}/${Math.round(data.wind0avgwind)}`;
             if (gustDiffTitle > 5) title += `g${Math.round(data.wind0windmax10)}`;
             title += `kts, ${Math.round(data.thb0seapress)}hpa`;
             document.title = title;
