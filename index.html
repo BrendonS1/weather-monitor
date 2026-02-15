@@ -263,7 +263,7 @@
 
         .camera-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
             gap: 20px;
             margin-top: 20px;
         }
@@ -340,6 +340,11 @@
             color: rgba(255, 255, 255, 0.8);
             font-size: 14px;
         }
+        @media (max-width: 600px) {
+            .header-direction {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -354,7 +359,7 @@
                         LIVE DATA
                     </div>
                 </div>
-                <div style="text-align: right;">
+                <div class="header-direction" style="text-align: right;">
                     <div style="font-size: 14px; color: #888; margin-bottom: 5px;">NZNE</div>
                     <div style="font-size: 24px; font-weight: 700; color: #007e33;">210° M</div>
                 </div>
@@ -698,7 +703,7 @@ async function fetchWeatherData() {
         const stale = dataAge >= 15;
 
         // ========== UPDATE WIND CARD ==========
-        document.querySelector('.wind-arrow').style.transform = `rotate(${windDir}deg)`;
+        document.querySelector('.wind-arrow').style.transform = `rotate(${windDir + 180}deg)`;
         document.querySelector('.wind-direction').textContent = stale ? '###°/## kts' : frmtDir(windDir) + '°/' + Math.round(data.wind0avgwind) + 'kts';
         document.getElementById('windCurrent').textContent = (stale ? '##' : Math.round(data.wind0wind)) + ' kts';
         document.getElementById('windAvg').textContent = (stale ? '##' : Math.round(data.wind0avgwind)) + ' kts';
