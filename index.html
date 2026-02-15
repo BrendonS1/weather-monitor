@@ -158,13 +158,11 @@
         }
 
         .wind-direction {
-            position: absolute;
-            top: 15%;
-            font-size: 24px;  /* Reduced from 24px */
+            font-size: 24px;
             font-weight: 700;
             color: #007e33;
-            z-index: 2;
             text-align: center;
+            margin-bottom: 5px;
         }
 
         .runway-indicator {
@@ -385,11 +383,11 @@
             <!-- Wind Card -->
             <div class="card">
                 <div class="card-title">Wind</div>
+                <div class="wind-direction">210°/12 kts</div>
                 <div class="wind-compass">
                     <div class="runway-indicator"></div>
                     <div class="runway-indicator-secondary"></div>
                     <div class="wind-arrow">↑</div>
-                    <div class="wind-direction">210°</div>
                 </div>
                 <div class="card-detail">
                     <div class="card-detail-row">
@@ -562,6 +560,21 @@
        </div>
       </div>
 
+        <!-- Notes -->
+        <div class="card">
+            <div class="card-title">Notes</div>
+            <div style="font-size: 14px; line-height: 1.8; color: #444;">
+                <p>Weather measuring equipment is located on the RWY 21 windsock upright, approximately 65m E of the runway threshold.</p>
+                <p>An AWIB broadcasts on frequency 130.45MHz and includes time, wind velocity and gust strength, MSL pressure*, temperature, dew point, and other relevant messages.</p>
+                <p>*MSL pressure information is not a certified QNH source.</p>
+                <p>Please report AWIB issues to the flight office, or North Shore Base on frequency 118.00MHz.</p>
+                <p>Turbulence and wind-shear can be expected in S/SW/W/NW wind conditions in the area of the RWY 21 approach path. Mechanical turbulence due to the proximity of buildings can be expected in westerly and easterly wind conditions. See the NZAIP for details.</p>
+                <p>More comprehensive information about operating at North Shore Airport is available at <a href="http://www.northshoreairport.co.nz/arriving-by-aircraft/" target="_blank">northshoreairport.co.nz</a>.</p>
+                <p><strong>Tip:</strong> Add this page to your mobile phone home page for easy access.</p>
+                <p>Information about this station including smart phone access is available <a href="http://weather.nsac.co.nz/NEmetinf.htm" target="_blank">here</a>.</p>
+            </div>
+        </div>
+
         <div class="footer">
             North Shore Airport (NZNE) • Weather Station System<br>
             Data updated every minute • Page refreshed at 14:25:32
@@ -704,7 +717,15 @@ async function fetchWeatherData() {
 
         // ========== UPDATE WIND CARD ==========
         document.querySelector('.wind-arrow').style.transform = `rotate(${windDir + 180}deg)`;
-        document.querySelector('.wind-direction').textContent = stale ? '###°/## kts' : frmtDir(windDir) + '°/' + Math.round(data.wind0avgwind) + 'kts';
+        if (stale) {
+            document.querySelector('.wind-direction').textContent = '###°/## kts';
+        } else {
+            const gustDiffWind = Math.round(data.wind0windmax10) - Math.round(data.wind0avgwind);
+            let windStr = frmtDir(windDir) + '°/' + Math.round(data.wind0avgwind);
+            if (gustDiffWind > 5) windStr += 'G' + Math.round(data.wind0windmax10);
+            windStr += ' kts';
+            document.querySelector('.wind-direction').textContent = windStr;
+        }
         document.getElementById('windCurrent').textContent = (stale ? '##' : Math.round(data.wind0wind)) + ' kts';
         document.getElementById('windAvg').textContent = (stale ? '##' : Math.round(data.wind0avgwind)) + ' kts';
         document.getElementById('windGust10').textContent = (stale ? '##' : Math.round(data.wind0windmax10)) + ' kts';
@@ -875,13 +896,20 @@ async function fetchWeatherData() {
             }, { displayModeBar: false, staticPlot: true });
             
             const dirTrace = { y: windDirTrend, mode: 'markers', marker: { color: '#007e33', size: 8 } };
+            const dirShapes = [
+                { type: 'line', y0: 210, y1: 210, x0: 0, x1: 1, xref: 'paper', line: { color: '#999', width: 1 } },
+                { type: 'line', y0: 30, y1: 30, x0: 0, x1: 1, xref: 'paper', line: { color: '#999', width: 1 } },
+                { type: 'line', y0: 90, y1: 90, x0: 0, x1: 1, xref: 'paper', line: { color: '#ccc', width: 1, dash: 'dash' } },
+                { type: 'line', y0: 270, y1: 270, x0: 0, x1: 1, xref: 'paper', line: { color: '#ccc', width: 1, dash: 'dash' } }
+            ];
             Plotly.newPlot('dirChart', [dirTrace], {
                 xaxis: { title: 'Minutes ago', autorange: 'reversed', gridcolor: '#e0e0e0' },
                 yaxis: { title: 'Direction (°M)', range: [0, 370], tickvals: [0, 90, 180, 270, 360] },
                 margin: { t: 10, l: 50, r: 20, b: 40 },
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
-                font: { color: '#666', family: 'Roboto Condensed' }
+                font: { color: '#666', family: 'Roboto Condensed' },
+                shapes: dirShapes
             }, { displayModeBar: false, staticPlot: true });
         }
         
