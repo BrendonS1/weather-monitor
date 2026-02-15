@@ -796,8 +796,19 @@ async function fetchWeatherData() {
             liveLabel.textContent = ' LIVE DATA';
         }
 
+        // ========== UPDATE PRESSURE CARD ==========
+        const pressCard = document.querySelectorAll('.card')[1]; // Second card (Pressure)
+        pressCard.querySelector('.card-value').innerHTML =
+            (stale ? '####' : Math.round(data.thb0seapress)) + '<span class="card-unit">hPa</span>';
+
+        const pressDetails = pressCard.querySelectorAll('.card-detail-value');
+        pressDetails[0].textContent = (stale ? '####' : Math.round(data.thb0seapress)) + ' hPa';  // Sea Level
+        pressDetails[1].textContent = (stale ? '####' : Math.round(data.thb0press)) + ' hPa';     // Station
+        pressDetails[2].textContent = Math.round(data.pressdm) + ' hPa';       // Day High
+        pressDetails[3].textContent = Math.round(data.pressdmin) + ' hPa';     // Day Low
+
         // ========== UPDATE TEMPERATURE CARD ==========
-        const tempCard = document.querySelectorAll('.card')[1]; // Second card
+        const tempCard = document.querySelectorAll('.card')[2]; // Third card (Temperature)
         tempCard.querySelector('.card-value').innerHTML =
             (stale ? '##' : Math.round(data.th0temp)) + '<span class="card-unit">°C</span>';
 
@@ -813,17 +824,6 @@ async function fetchWeatherData() {
             const minTime = data.tempdmint.substr(8, 2) + ':' + data.tempdmint.substr(10, 2);
             tempDetails[3].textContent = Math.round(data.tempdmin) + '°C at ' + minTime;
         }
-
-        // ========== UPDATE PRESSURE CARD ==========
-        const pressCard = document.querySelectorAll('.card')[2]; // Third card
-        pressCard.querySelector('.card-value').innerHTML =
-            (stale ? '####' : Math.round(data.thb0seapress)) + '<span class="card-unit">hPa</span>';
-
-        const pressDetails = pressCard.querySelectorAll('.card-detail-value');
-        pressDetails[0].textContent = (stale ? '####' : Math.round(data.thb0seapress)) + ' hPa';  // Sea Level
-        pressDetails[1].textContent = (stale ? '####' : Math.round(data.thb0press)) + ' hPa';     // Station
-        pressDetails[2].textContent = Math.round(data.pressdm) + ' hPa';       // Day High
-        pressDetails[3].textContent = Math.round(data.pressdmin) + ' hPa';     // Day Low
 
         // ========== UPDATE RAINFALL CARD ==========
         const rainCard = document.querySelectorAll('.card')[3]; // Fourth card
