@@ -28,7 +28,8 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    if (req.method !== 'GET' || req.url !== '/api/wind-history') {
+    const pathname = req.url.split('?')[0];
+    if (req.method !== 'GET' || pathname !== '/api/wind-history') {
         res.writeHead(404, headers);
         res.end(JSON.stringify({ error: 'Not found' }));
         return;
