@@ -582,6 +582,8 @@
         const DATA_URL = PROXY_URL + 'http://weather.nsac.co.nz/NEmetData.txt';
         const NOTICE_URL = PROXY_URL + 'http://weather.nsac.co.nz/awibexport.txt';
         const CAM_URL = PROXY_URL + 'http://weather.nsac.co.nz/cams/CamInfo.txt';
+        //const WIND_API_URL = 'http://localhost:3002/api/wind-history';
+        const WIND_API_URL = 'https://weather-monitor-wind-api.onrender.com/api/wind-history';
         const UPDATE_INTERVAL = 60000;
 
         let metData = null;
@@ -884,21 +886,7 @@ async function fetchWeatherData() {
 
         // ========== UPDATE CHARTS ==========
         if (typeof Plotly !== 'undefined') {
-            const windTrace = {
-                y: data.windtrend,
-                mode: 'lines',
-                line: { color: '#007e33', width: 3 },
-                fill: 'tozeroy',
-                fillcolor: 'rgba(0, 126, 51, 0.1)'
-            };
-            Plotly.newPlot('windChart', [windTrace], {
-                xaxis: { title: 'Minutes ago', autorange: 'reversed', gridcolor: '#e0e0e0' },
-                yaxis: { title: 'Strength (kts)', rangemode: 'tozero', gridcolor: '#e0e0e0' },
-                margin: { t: 10, l: 50, r: 20, b: 40 },
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                font: { color: '#666', family: 'Roboto Condensed' }
-            }, { displayModeBar: false, staticPlot: true });
+            // Wind chart now populated by fetchWindHistory()
             
             const dirTrace = { y: windDirTrend, mode: 'markers', marker: { color: '#007e33', size: 8 } };
             const dirShapes = [
@@ -938,9 +926,50 @@ async function fetchWeatherData() {
     }
 }
 
+        async function fetchWindHistory() {
+            try {
+                const response = await fetch(WIND_API_URL + '?_=' + Date.now());
+                if (!response.ok) throw new Error('Wind API fetch failed');
+                const history = await response.json();
+
+                if (typeof Plotly !== 'undefined' && history.timestamps.length > 0) {
+                    const windAvgTrace = {
+                        x: history.timestamps,
+                        y: history.wind_avg,
+                        name: 'Wind Avg',
+                        mode: 'lines',
+                        line: { color: '#007e33', width: 3 },
+                        fill: 'tozeroy',
+                        fillcolor: 'rgba(0, 126, 51, 0.1)'
+                    };
+                    const xwindTrace = {
+                        x: history.timestamps,
+                        y: history.wind_xwind,
+                        name: 'Crosswind',
+                        mode: 'lines',
+                        line: { color: '#F44336', width: 2 }
+                    };
+                    Plotly.newPlot('windChart', [windAvgTrace, xwindTrace], {
+                        xaxis: { type: 'date', gridcolor: '#e0e0e0' },
+                        yaxis: { title: 'Strength (kts)', rangemode: 'tozero', gridcolor: '#e0e0e0' },
+                        margin: { t: 10, l: 50, r: 20, b: 40 },
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        plot_bgcolor: 'rgba(0,0,0,0)',
+                        font: { color: '#666', family: 'Roboto Condensed' },
+                        legend: { orientation: 'h', y: 1.12, x: 0.5, xanchor: 'center' },
+                        showlegend: true
+                    }, { displayModeBar: false, staticPlot: true });
+                }
+            } catch (err) {
+                console.error('Wind history error:', err);
+            }
+        }
+
         window.addEventListener('load', () => {
             fetchWeatherData();
+            fetchWindHistory();
             setInterval(fetchWeatherData, UPDATE_INTERVAL);
+            setInterval(fetchWindHistory, UPDATE_INTERVAL);
         });
 
         // Camera fetching function
