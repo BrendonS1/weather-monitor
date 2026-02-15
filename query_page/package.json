@@ -1,0 +1,12 @@
+{
+  "name": "weather-monitor-query",
+  "version": "1.0.0",
+  "description": "SQL query server for weather-monitor-db",
+  "main": "query-server.js",
+  "scripts": {
+    "start": "node query-server.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}
