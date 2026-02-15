@@ -498,11 +498,17 @@
                     </div>
                 </div>
             </div>
+            <!-- Individual Camera Cards (new style) -->
+            <div id="cameraSection" style="display: none;"></div>
         </div>
 
-        <!-- Camera Feeds -->
-        <div id="cameraSection" class="grid" style="display: none;">
-            <!-- Camera cards will load here -->
+        <!-- Camera Feeds (old grouped style - for comparison) -->
+        <div id="cameraSectionOld" style="display: none;">
+            <div class="card">
+                <div class="card-title">Weather Cameras (Grouped Style)</div>
+                <div class="camera-grid" id="cameraGridOld">
+                </div>
+            </div>
         </div>
 
         <!-- Wind Trend Chart -->
@@ -939,29 +945,47 @@ async function fetchWeatherData() {
         // Check if images are recent (less than 15 minutes old)
         if (deltaTime < 15 * 60 * 1000 && camData.Cameras && camData.Cameras.length > 0) {
             const section = document.getElementById('cameraSection');
-            if (!section) {
-                console.error('cameraSection element not found!');
-                return;
+            const sectionOld = document.getElementById('cameraSectionOld');
+            const gridOld = document.getElementById('cameraGridOld');
+
+            // New style: individual cards inside the main grid
+            if (section) {
+                section.innerHTML = camData.Cameras.map((cam) => {
+                    const loResUrl = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/cams/' + cam.LoResName);
+                    const hiResUrl = 'http://weather.nsac.co.nz/cams/' + cam.HiResName;
+                    return `
+                        <div class="card" style="padding: 0; overflow: hidden;">
+                            <div class="card-title" style="padding: 20px 30px 10px;">${cam.CamName}</div>
+                            <img src="${loResUrl}?t=${Date.now()}"
+                                 style="width: 100%; object-fit: cover; cursor: pointer; display: block;"
+                                 onclick="window.open('${hiResUrl}', '_blank')"
+                                 onerror="this.closest('.card').style.display='none';"
+                                 alt="${cam.CamName}">
+                        </div>
+                    `;
+                }).join('');
+                section.style.display = 'contents';
             }
 
-            // Build individual camera cards
-            section.innerHTML = camData.Cameras.map((cam) => {
-                const loResUrl = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/cams/' + cam.LoResName);
-                const hiResUrl = 'http://weather.nsac.co.nz/cams/' + cam.HiResName;
+            // Old style: grouped inside one card
+            if (sectionOld && gridOld) {
+                gridOld.innerHTML = camData.Cameras.map((cam) => {
+                    const loResUrl = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/cams/' + cam.LoResName);
+                    const hiResUrl = 'http://weather.nsac.co.nz/cams/' + cam.HiResName;
+                    return `
+                        <div class="camera-card">
+                            <img src="${loResUrl}?t=${Date.now()}"
+                                 style="width: 100%; height: 250px; object-fit: cover; cursor: pointer; display: block;"
+                                 onclick="window.open('${hiResUrl}', '_blank')"
+                                 onerror="this.parentElement.style.display='none';"
+                                 alt="${cam.CamName}">
+                            <div class="camera-label">${cam.CamName}</div>
+                        </div>
+                    `;
+                }).join('');
+                sectionOld.style.display = 'block';
+            }
 
-                return `
-                    <div class="card" style="padding: 0; overflow: hidden;">
-                        <div class="card-title" style="padding: 20px 30px 10px;">${cam.CamName}</div>
-                        <img src="${loResUrl}?t=${Date.now()}"
-                             style="width: 100%; object-fit: cover; cursor: pointer; display: block;"
-                             onclick="window.open('${hiResUrl}', '_blank')"
-                             onerror="console.error('Failed to load image:', '${cam.LoResName}'); this.closest('.card').style.display='none';"
-                             alt="${cam.CamName}">
-                    </div>
-                `;
-            }).join('');
-
-            section.style.display = 'grid';
             console.log('✓ Displayed', camData.Cameras.length, 'camera(s)');
         } else {
             console.warn('Camera images too old or no cameras available');
@@ -971,10 +995,18 @@ async function fetchWeatherData() {
     }
 }
 
-// Make sure this is called in your initialization
-// Find your existing window.addEventListener('load', ...) and add:
 fetchCameras();
-setInterval(fetchCameras, UPDATE_INTERVAL); // Refresh every 60 seconds
+setInterval(fetchCameras, UPDATE_INTERVAL);
+
+// Resize Plotly charts when window resizes
+window.addEventListener('resize', () => {
+    const windChart = document.getElementById('windChart');
+    const dirChart = document.getElementById('dirChart');
+    if (typeof Plotly !== 'undefined') {
+        if (windChart && windChart.data) Plotly.Plots.resize(windChart);
+        if (dirChart && dirChart.data) Plotly.Plots.resize(dirChart);
+    }
+});
 
 
     </script>
