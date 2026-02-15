@@ -929,7 +929,7 @@ async function fetchWeatherData() {
         async function fetchWindHistory() {
             try {
                 const response = await fetch(WIND_API_URL + '?_=' + Date.now());
-                if (!response.ok) throw new Error('Wind API fetch failed');
+                if (!response.ok) throw new Error(`Wind API fetch failed: ${response.status} ${response.statusText}`);
                 const history = await response.json();
 
                 if (typeof Plotly !== 'undefined' && history.timestamps.length > 0) {
