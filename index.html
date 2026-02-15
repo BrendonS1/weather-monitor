@@ -683,23 +683,36 @@ async function fetchWeatherData() {
         
         const windDir = t2m(data.wind0dir);
         const windDirTrend = data.winddirtrend.map(d => t2m(d));
-        
+        const rainRate = parseFloat(data.rain0rate || 0);
+
+        // Calculate data age and staleness
+        const sampleDate = new Date(
+            data.currYYYY,
+            parseInt(data.currMM) - 1,
+            data.currDD,
+            data.currhh,
+            data.currmm,
+            0, 0
+        );
+        const dataAge = Math.round((new Date() - sampleDate) / 1000 / 60);
+        const stale = dataAge >= 15;
+
         // ========== UPDATE WIND CARD ==========
         document.querySelector('.wind-arrow').style.transform = `rotate(${windDir}deg)`;
-        document.querySelector('.wind-direction').textContent = frmtDir(windDir) + '°/' + Math.round(data.wind0avgwind) + 'kts';
-        document.getElementById('windCurrent').textContent = Math.round(data.wind0wind) + ' kts';
-        document.getElementById('windAvg').textContent = Math.round(data.wind0avgwind) + ' kts';
-        document.getElementById('windGust10').textContent = Math.round(data.wind0windmax10) + ' kts';
-        document.getElementById('windMax60').textContent = Math.round(data.wind0windmax60) + ' kts';
-        document.getElementById('windVar').textContent = directionRange(windDirTrend, 10);
-        
+        document.querySelector('.wind-direction').textContent = stale ? '###°/## kts' : frmtDir(windDir) + '°/' + Math.round(data.wind0avgwind) + 'kts';
+        document.getElementById('windCurrent').textContent = (stale ? '##' : Math.round(data.wind0wind)) + ' kts';
+        document.getElementById('windAvg').textContent = (stale ? '##' : Math.round(data.wind0avgwind)) + ' kts';
+        document.getElementById('windGust10').textContent = (stale ? '##' : Math.round(data.wind0windmax10)) + ' kts';
+        document.getElementById('windMax60').textContent = (stale ? '##' : Math.round(data.wind0windmax60)) + ' kts';
+        document.getElementById('windVar').textContent = stale ? '##' : directionRange(windDirTrend, 10);
+
         // Crosswind component
         const crosswindData = calculateCrosswind(Math.round(data.wind0avgwind), windDir);
         const crosswindEl = document.getElementById('windCrosswind');
-        crosswindEl.textContent = `RWY${crosswindData.runway} / ${crosswindData.crosswind} kts`;
+        crosswindEl.textContent = stale ? '##' : `RWY${crosswindData.runway} / ${crosswindData.crosswind} kts`;
 
         // Set color based on crosswind value
-        if (crosswindData.crosswind > 10) {
+        if (!stale && crosswindData.crosswind > 10) {
             crosswindEl.style.color = '#F44336';  // Red warning
             crosswindEl.style.fontWeight = '700';  // Bold
         } else {
@@ -709,30 +722,23 @@ async function fetchWeatherData() {
 
         // ========== UPDATE HEADER ==========
         // Update green direction indicator
-        document.querySelector('[style*="font-size: 24px"]').textContent = frmtDir(windDir) + '° M';
-        
+        document.querySelector('[style*="font-size: 24px"]').textContent = stale ? '###° M' : frmtDir(windDir) + '° M';
+
         // Build and update METAR
-        const gustDiff = Math.round(data.wind0windmax10) - Math.round(data.wind0avgwind);
-        let metar = `NZNE ${frmtDir(windDir)}°M, ${Math.round(data.wind0avgwind)}`;
-        if (gustDiff > 5) metar += `G${Math.round(data.wind0windmax10)}`;
-        metar += ` kts, ${Math.round(data.thb0seapress)} hPa, ${Math.round(data.th0temp)}/${Math.round(data.th0dew)}°C`;
-        
-        const rainRate = parseFloat(data.rain0rate || 0);
-        if (rainRate > 0) {
-            metar += ', Rain ' + (rainRate < 2.5 ? 'Light' : rainRate < 7.6 ? 'Moderate' : 'HEAVY');
+        if (stale) {
+            document.querySelector('.metar').textContent = 'NZNE — NO DATA';
+        } else {
+            const gustDiff = Math.round(data.wind0windmax10) - Math.round(data.wind0avgwind);
+            let metar = `NZNE ${frmtDir(windDir)}°M, ${Math.round(data.wind0avgwind)}`;
+            if (gustDiff > 5) metar += `G${Math.round(data.wind0windmax10)}`;
+            metar += ` kts, ${Math.round(data.thb0seapress)} hPa, ${Math.round(data.th0temp)}/${Math.round(data.th0dew)}°C`;
+            if (rainRate > 0) {
+                metar += ', Rain ' + (rainRate < 2.5 ? 'Light' : rainRate < 7.6 ? 'Moderate' : 'HEAVY');
+            }
+            document.querySelector('.metar').textContent = metar;
         }
-        document.querySelector('.metar').textContent = metar;
-        
+
         // Update timestamp
-        const sampleDate = new Date(
-            data.currYYYY, 
-            parseInt(data.currMM) - 1, 
-            data.currDD, 
-            data.currhh, 
-            data.currmm, 
-            0, 0
-        );
-        const dataAge = Math.round((new Date() - sampleDate) / 1000 / 60);
         const timeTypeStr = timeType(data.currYYYY, data.currMM, data.currDD);
         let timestampStr = `At ${frmtTime(data.currhh)}:${frmtTime(data.currmm)} ${timeTypeStr}`;
         if (dataAge > 1) {
@@ -745,7 +751,7 @@ async function fetchWeatherData() {
         // Update live indicator based on data staleness
         const liveIndicator = document.querySelector('.live-indicator');
         const liveLabel = liveIndicator.lastChild;
-        if (dataAge >= 15) {
+        if (stale) {
             liveIndicator.classList.add('no-data');
             liveLabel.textContent = ' NO DATA';
         } else {
@@ -755,13 +761,13 @@ async function fetchWeatherData() {
 
         // ========== UPDATE TEMPERATURE CARD ==========
         const tempCard = document.querySelectorAll('.card')[1]; // Second card
-        tempCard.querySelector('.card-value').innerHTML = 
-            Math.round(data.th0temp) + '<span class="card-unit">°C</span>';
-        
+        tempCard.querySelector('.card-value').innerHTML =
+            (stale ? '##' : Math.round(data.th0temp)) + '<span class="card-unit">°C</span>';
+
         const tempDetails = tempCard.querySelectorAll('.card-detail-value');
-        tempDetails[0].textContent = Math.round(data.th0dew) + '°C';  // Dew Point
-        tempDetails[1].textContent = Math.round(data.th0hum) + '%';   // Humidity
-        
+        tempDetails[0].textContent = (stale ? '##' : Math.round(data.th0dew)) + '°C';  // Dew Point
+        tempDetails[1].textContent = (stale ? '##' : Math.round(data.th0hum)) + '%';   // Humidity
+
         if (data.tempdmt) {
             const maxTime = data.tempdmt.substr(8, 2) + ':' + data.tempdmt.substr(10, 2);
             tempDetails[2].textContent = Math.round(data.tempdm) + '°C at ' + maxTime;
@@ -773,23 +779,28 @@ async function fetchWeatherData() {
 
         // ========== UPDATE PRESSURE CARD ==========
         const pressCard = document.querySelectorAll('.card')[2]; // Third card
-        pressCard.querySelector('.card-value').innerHTML = 
-            Math.round(data.thb0seapress) + '<span class="card-unit">hPa</span>';
-        
+        pressCard.querySelector('.card-value').innerHTML =
+            (stale ? '####' : Math.round(data.thb0seapress)) + '<span class="card-unit">hPa</span>';
+
         const pressDetails = pressCard.querySelectorAll('.card-detail-value');
-        pressDetails[0].textContent = Math.round(data.thb0seapress) + ' hPa';  // Sea Level
-        pressDetails[1].textContent = Math.round(data.thb0press) + ' hPa';     // Station
+        pressDetails[0].textContent = (stale ? '####' : Math.round(data.thb0seapress)) + ' hPa';  // Sea Level
+        pressDetails[1].textContent = (stale ? '####' : Math.round(data.thb0press)) + ' hPa';     // Station
         pressDetails[2].textContent = Math.round(data.pressdm) + ' hPa';       // Day High
         pressDetails[3].textContent = Math.round(data.pressdmin) + ' hPa';     // Day Low
 
         // ========== UPDATE RAINFALL CARD ==========
         const rainCard = document.querySelectorAll('.card')[3]; // Fourth card
-        rainCard.querySelector('.card-value').innerHTML = 
-            rainRate.toFixed(1) + '<span class="card-unit">mm/hr</span>';
-        
+        rainCard.querySelector('.card-value').innerHTML =
+            (stale ? '##' : rainRate.toFixed(1)) + '<span class="card-unit">mm/hr</span>';
+
         // Update rain badge
         const rainBadge = rainCard.querySelector('.badge');
-        if (rainRate > 0) {
+        if (stale) {
+            rainBadge.textContent = '##';
+            rainBadge.className = 'badge';
+            rainBadge.style.background = '';
+            rainBadge.style.color = '';
+        } else if (rainRate > 0) {
             rainBadge.className = 'badge';
             if (rainRate < 2.5) {
                 rainBadge.textContent = 'Light Rain';
@@ -808,14 +819,14 @@ async function fetchWeatherData() {
             rainBadge.textContent = 'No Rain';
             rainBadge.className = 'badge';
         }
-        
+
         const rainDetails = rainCard.querySelectorAll('.card-detail-value');
-        rainDetails[0].textContent = rainRate.toFixed(1) + ' mm/hr';  // Rate
+        rainDetails[0].textContent = (stale ? '##' : rainRate.toFixed(1)) + ' mm/hr';  // Rate
         rainDetails[1].textContent = data.rainds + ' mm';              // Today
         rainDetails[2].textContent = data.rainms + ' mm';              // Month
-        
+
         if (data.rainlast) {
-            const lastRain = data.rainlast.substr(6, 2) + '/' + 
+            const lastRain = data.rainlast.substr(6, 2) + '/' +
                            data.rainlast.substr(4, 2) + ' ' +
                            data.rainlast.substr(8, 2) + ':' +
                            data.rainlast.substr(10, 2);
