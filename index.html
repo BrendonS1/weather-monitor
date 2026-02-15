@@ -908,7 +908,7 @@ async function fetchWeatherData() {
                 font: { size: 11, color: '#999', family: 'Roboto Condensed' }
             }));
             Plotly.newPlot('dirChart', [dirTrace], {
-                xaxis: { title: 'Minutes ago', autorange: 'reversed', gridcolor: '#e0e0e0' },
+                xaxis: { title: 'Minutes ago', range: [windDirTrend.length - 1, 0], gridcolor: '#e0e0e0' },
                 yaxis: { title: 'Direction (°M)', range: [370, 0], tickvals: [0, 90, 180, 270, 360] },
                 margin: { t: 10, l: 50, r: 20, b: 40 },
                 paper_bgcolor: 'rgba(0,0,0,0)',
@@ -933,8 +933,12 @@ async function fetchWeatherData() {
                 const history = await response.json();
 
                 if (typeof Plotly !== 'undefined' && history.timestamps.length > 0) {
+                    const now = new Date();
+                    const minutesAgo = history.timestamps.map(ts => {
+                        return (now - new Date(ts)) / 60000;
+                    });
                     const windAvgTrace = {
-                        x: history.timestamps,
+                        x: minutesAgo,
                         y: history.wind_avg,
                         name: 'Wind Avg',
                         mode: 'lines',
@@ -943,14 +947,14 @@ async function fetchWeatherData() {
                         fillcolor: 'rgba(0, 126, 51, 0.1)'
                     };
                     const xwindTrace = {
-                        x: history.timestamps,
+                        x: minutesAgo,
                         y: history.wind_xwind,
                         name: 'Crosswind',
                         mode: 'lines',
                         marker: { color: '#F44336', width: 1 }
                     };
                     Plotly.newPlot('windChart', [windAvgTrace, xwindTrace], {
-                        xaxis: { type: 'date', gridcolor: '#e0e0e0' },
+                        xaxis: { title: 'Minutes ago', range: [Math.max(...minutesAgo), 0], gridcolor: '#e0e0e0' },
                         yaxis: { title: 'Strength (kts)', rangemode: 'tozero', gridcolor: '#e0e0e0' },
                         margin: { t: 10, l: 50, r: 20, b: 40 },
                         paper_bgcolor: 'rgba(0,0,0,0)',
