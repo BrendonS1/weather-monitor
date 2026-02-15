@@ -921,7 +921,7 @@ async function fetchWeatherData() {
             }));
             Plotly.newPlot('dirChart', [dirTrace], {
                 xaxis: { title: 'Minutes ago', autorange: 'reversed', gridcolor: '#e0e0e0' },
-                yaxis: { title: 'Direction (°M)', range: [0, 370], tickvals: [0, 90, 180, 270, 360] },
+                yaxis: { title: 'Direction (°M)', range: [370, 0], tickvals: [0, 90, 180, 270, 360] },
                 margin: { t: 10, l: 50, r: 50, b: 40 },
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
