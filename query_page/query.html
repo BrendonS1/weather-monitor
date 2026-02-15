@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Monitor - Database Query</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #007e33 0%, #00b84d 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px 40px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .header-subtitle {
+            font-size: 14px;
+            color: #888;
+        }
+
+        .header-subtitle a {
+            color: #007e33;
+            text-decoration: none;
+        }
+
+        .header-subtitle a:hover {
+            text-decoration: underline;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        /* Auth section */
+        .auth-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .auth-row input {
+            font-family: 'Roboto Condensed', sans-serif;
+            font-size: 14px;
+            padding: 10px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            outline: none;
+            width: 250px;
+        }
+
+        .auth-row input:focus {
+            border-color: #007e33;
+        }
+
+        /* SQL editor */
+        textarea {
+            font-family: 'Roboto Condensed', 'Courier New', monospace;
+            font-size: 14px;
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            outline: none;
+            resize: vertical;
+            background: #f8f9fa;
+        }
+
+        textarea:focus {
+            border-color: #007e33;
+        }
+
+        .editor-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            font-family: 'Roboto Condensed', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #007e33, #00b84d);
+            color: white;
+        }
+
+        .btn-preset {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-preset:hover {
+            background: #e0e0e0;
+        }
+
+        .shortcut-hint {
+            font-size: 12px;
+            color: #888;
+            margin-left: 4px;
+        }
+
+        /* Results */
+        .results-info {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead th {
+            background: #f5f5f5;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            color: #666;
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 2px solid #e0e0e0;
+            white-space: nowrap;
+        }
+
+        tbody td {
+            padding: 8px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            white-space: nowrap;
+        }
+
+        tbody tr:hover {
+            background: rgba(0, 126, 51, 0.04);
+        }
+
+        /* Error display */
+        .error-box {
+            background: rgba(244, 67, 54, 0.08);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            border-radius: 10px;
+            padding: 16px 20px;
+            color: #c62828;
+            font-size: 14px;
+            display: none;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #007e33;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <h1>Weather Monitor DB</h1>
+                    <div class="header-subtitle">SQL query interface for weather-monitor-db &bull; <a href="https://weather-monitor-frontend-5e76.onrender.com">Back to dashboard</a></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Password -->
+        <div class="card">
+            <div class="card-title">Authentication</div>
+            <div class="auth-row">
+                <input type="password" id="password" placeholder="Enter query password">
+            </div>
+        </div>
+
+        <!-- SQL Editor -->
+        <div class="card">
+            <div class="card-title">SQL Query</div>
+            <textarea id="sql" placeholder="SELECT * FROM weather_data ORDER BY timestamp DESC LIMIT 10;"></textarea>
+            <div class="editor-controls">
+                <button class="btn btn-primary" id="runBtn" onclick="runQuery()">Run Query</button>
+                <div class="spinner" id="spinner"></div>
+                <span class="shortcut-hint">Ctrl+Enter to run</span>
+                <div style="flex: 1;"></div>
+                <button class="btn btn-preset" onclick="preset('latest')">Latest 10</button>
+                <button class="btn btn-preset" onclick="preset('count')">Record count</button>
+                <button class="btn btn-preset" onclick="preset('today')">Today's data</button>
+                <button class="btn btn-preset" onclick="preset('tables')">List tables</button>
+            </div>
+        </div>
+
+        <!-- Error -->
+        <div class="error-box" id="error"></div>
+
+        <!-- Results -->
+        <div class="card" id="resultsCard" style="display: none;">
+            <div class="card-title">Results</div>
+            <div class="results-info" id="resultsInfo"></div>
+            <div class="table-wrap">
+                <table>
+                    <thead id="thead"></thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">
+            Weather Monitor Database Query Tool
+        </div>
+    </div>
+
+    <script>
+        // Point this at your deployed query-server URL
+        const QUERY_URL = 'https://query-weather-db-service.onrender.com/query';
+
+        const PRESETS = {
+            latest: 'SELECT * FROM weather_data ORDER BY timestamp DESC LIMIT 10;',
+            count: 'SELECT COUNT(*) AS total_records FROM weather_data;',
+            today: "SELECT * FROM weather_data WHERE timestamp >= CURRENT_DATE ORDER BY timestamp DESC;",
+            tables: "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
+        };
+
+        // Restore password from sessionStorage
+        const pwInput = document.getElementById('password');
+        const saved = sessionStorage.getItem('queryPassword');
+        if (saved) pwInput.value = saved;
+        pwInput.addEventListener('input', () => {
+            sessionStorage.setItem('queryPassword', pwInput.value);
+        });
+
+        function preset(key) {
+            document.getElementById('sql').value = PRESETS[key];
+            runQuery();
+        }
+
+        // Ctrl+Enter shortcut
+        document.getElementById('sql').addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                runQuery();
+            }
+        });
+
+        async function runQuery() {
+            const password = document.getElementById('password').value;
+            const sql = document.getElementById('sql').value.trim();
+            const errorEl = document.getElementById('error');
+            const resultsCard = document.getElementById('resultsCard');
+            const spinner = document.getElementById('spinner');
+            const runBtn = document.getElementById('runBtn');
+
+            errorEl.style.display = 'none';
+            resultsCard.style.display = 'none';
+
+            if (!password) {
+                errorEl.textContent = 'Please enter the query password.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            if (!sql) {
+                errorEl.textContent = 'Please enter a SQL query.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            spinner.style.display = 'inline-block';
+            runBtn.disabled = true;
+
+            try {
+                const resp = await fetch(QUERY_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, sql })
+                });
+
+                const data = await resp.json();
+
+                if (!resp.ok || data.error) {
+                    errorEl.textContent = data.error || 'Request failed.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                // Render results
+                const { columns, rows } = data;
+                document.getElementById('resultsInfo').textContent =
+                    `${rows.length} row${rows.length !== 1 ? 's' : ''} returned, ${columns.length} column${columns.length !== 1 ? 's' : ''}`;
+
+                document.getElementById('thead').innerHTML =
+                    '<tr>' + columns.map(c => `<th>${esc(c)}</th>`).join('') + '</tr>';
+
+                document.getElementById('tbody').innerHTML =
+                    rows.map(row =>
+                        '<tr>' + row.map(cell => `<td>${esc(cell)}</td>`).join('') + '</tr>'
+                    ).join('');
+
+                resultsCard.style.display = 'block';
+            } catch (err) {
+                errorEl.textContent = 'Could not reach the query server.';
+                errorEl.style.display = 'block';
+            } finally {
+                spinner.style.display = 'none';
+                runBtn.disabled = false;
+            }
+        }
+
+        function esc(val) {
+            if (val === null || val === undefined) return '<span style="color:#aaa">NULL</span>';
+            const s = String(val);
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
