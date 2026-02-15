@@ -55,7 +55,7 @@ const server = http.createServer(async (req, res) => {
             const result = await pool.query(
                 `SELECT device_utc_ts, sea_press_hpa
                  FROM weather_update
-                 WHERE device_utc_ts >= NOW() - INTERVAL '6 hours'
+                 WHERE device_utc_ts >= NOW() - INTERVAL '12 hours'
                  ORDER BY device_utc_ts ASC`
             );
 
