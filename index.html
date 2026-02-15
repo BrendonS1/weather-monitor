@@ -502,15 +502,6 @@
             <div id="cameraSection" style="display: none;"></div>
         </div>
 
-        <!-- Camera Feeds (old grouped style - for comparison) -->
-        <div id="cameraSectionOld" style="display: none;">
-            <div class="card">
-                <div class="card-title">Weather Cameras (Grouped Style)</div>
-                <div class="camera-grid" id="cameraGridOld">
-                </div>
-            </div>
-        </div>
-
         <!-- Wind Trend Chart -->
         <div class="chart-card card" style="grid-column: 1 / -1;">
             <div class="card-title">Wind Strength - Last 60 Minutes</div>
@@ -904,14 +895,27 @@ async function fetchWeatherData() {
                 { type: 'line', y0: 90, y1: 90, x0: 0, x1: 1, xref: 'paper', line: { color: '#ccc', width: 1, dash: 'dash' } },
                 { type: 'line', y0: 270, y1: 270, x0: 0, x1: 1, xref: 'paper', line: { color: '#ccc', width: 1, dash: 'dash' } }
             ];
+            const dirAnnotations = [
+                { y: 30, text: 'RWY03', yanchor: 'bottom' },
+                { y: 90, text: 'RWY09', yanchor: 'bottom' },
+                { y: 210, text: 'RWY21', yanchor: 'bottom' },
+                { y: 270, text: 'RWY27', yanchor: 'bottom' }
+            ].map(a => ({
+                x: 1, xref: 'paper', xanchor: 'right',
+                y: a.y, yanchor: a.yanchor,
+                text: a.text,
+                showarrow: false,
+                font: { size: 11, color: '#999', family: 'Roboto Condensed' }
+            }));
             Plotly.newPlot('dirChart', [dirTrace], {
                 xaxis: { title: 'Minutes ago', autorange: 'reversed', gridcolor: '#e0e0e0' },
                 yaxis: { title: 'Direction (°M)', range: [0, 370], tickvals: [0, 90, 180, 270, 360] },
-                margin: { t: 10, l: 50, r: 20, b: 40 },
+                margin: { t: 10, l: 50, r: 50, b: 40 },
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 font: { color: '#666', family: 'Roboto Condensed' },
-                shapes: dirShapes
+                shapes: dirShapes,
+                annotations: dirAnnotations
             }, { displayModeBar: false, staticPlot: true });
         }
         
@@ -945,8 +949,6 @@ async function fetchWeatherData() {
         // Check if images are recent (less than 15 minutes old)
         if (deltaTime < 15 * 60 * 1000 && camData.Cameras && camData.Cameras.length > 0) {
             const section = document.getElementById('cameraSection');
-            const sectionOld = document.getElementById('cameraSectionOld');
-            const gridOld = document.getElementById('cameraGridOld');
 
             // New style: individual cards inside the main grid
             if (section) {
@@ -965,25 +967,6 @@ async function fetchWeatherData() {
                     `;
                 }).join('');
                 section.style.display = 'contents';
-            }
-
-            // Old style: grouped inside one card
-            if (sectionOld && gridOld) {
-                gridOld.innerHTML = camData.Cameras.map((cam) => {
-                    const loResUrl = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/cams/' + cam.LoResName);
-                    const hiResUrl = 'http://weather.nsac.co.nz/cams/' + cam.HiResName;
-                    return `
-                        <div class="camera-card">
-                            <img src="${loResUrl}?t=${Date.now()}"
-                                 style="width: 100%; height: 250px; object-fit: cover; cursor: pointer; display: block;"
-                                 onclick="window.open('${hiResUrl}', '_blank')"
-                                 onerror="this.parentElement.style.display='none';"
-                                 alt="${cam.CamName}">
-                            <div class="camera-label">${cam.CamName}</div>
-                        </div>
-                    `;
-                }).join('');
-                sectionOld.style.display = 'block';
             }
 
             console.log('✓ Displayed', camData.Cameras.length, 'camera(s)');
