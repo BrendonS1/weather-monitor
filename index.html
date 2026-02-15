@@ -419,33 +419,6 @@
                 </div>
             </div>
 
-            <!-- Temperature Card -->
-            <div class="card">
-                <div class="card-title">Temperature</div>
-                <div class="card-value">
-                    18<span class="card-unit">°C</span>
-                </div>
-                <div class="badge">Feels like 17°C</div>
-                <div class="card-detail">
-                    <div class="card-detail-row">
-                        <span class="card-detail-label">Dew Point</span>
-                        <span class="card-detail-value">12°C</span>
-                    </div>
-                    <div class="card-detail-row">
-                        <span class="card-detail-label">Humidity</span>
-                        <span class="card-detail-value">68%</span>
-                    </div>
-                    <div class="card-detail-row">
-                        <span class="card-detail-label">Today's High</span>
-                        <span class="card-detail-value">21°C at 13:15</span>
-                    </div>
-                    <div class="card-detail-row">
-                        <span class="card-detail-label">Today's Low</span>
-                        <span class="card-detail-value">14°C at 06:30</span>
-                    </div>
-                </div>
-            </div>
-
             <!-- Pressure Card -->
             <div class="card">
                 <div class="card-title">Pressure</div>
@@ -469,6 +442,34 @@
                     <div class="card-detail-row">
                         <span class="card-detail-label">Today's Low</span>
                         <span class="card-detail-value">1012 hPa</span>
+                    </div>
+                </div>
+                <div id="pressureChart" style="width: 100%; height: 150px; margin-top: 8px;"></div>
+            </div>
+
+            <!-- Temperature Card -->
+            <div class="card">
+                <div class="card-title">Temperature</div>
+                <div class="card-value">
+                    18<span class="card-unit">°C</span>
+                </div>
+                <div class="badge">Feels like 17°C</div>
+                <div class="card-detail">
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Dew Point</span>
+                        <span class="card-detail-value">12°C</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Humidity</span>
+                        <span class="card-detail-value">68%</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Today's High</span>
+                        <span class="card-detail-value">21°C at 13:15</span>
+                    </div>
+                    <div class="card-detail-row">
+                        <span class="card-detail-label">Today's Low</span>
+                        <span class="card-detail-value">14°C at 06:30</span>
                     </div>
                 </div>
             </div>
@@ -585,6 +586,8 @@
         const CAM_URL = PROXY_URL + 'http://weather.nsac.co.nz/cams/CamInfo.txt';
         //const WIND_API_URL = 'http://localhost:3002/api/wind-history';
         const WIND_API_URL = 'https://weather-monitor-wind-api-service.onrender.com/api/wind-history';
+        //const PRESSURE_API_URL = 'http://localhost:3002/api/pressure-history';
+        const PRESSURE_API_URL = 'https://weather-monitor-wind-api-service.onrender.com/api/pressure-history';
         const UPDATE_INTERVAL = 60000;
 
         let metData = null;
@@ -970,11 +973,42 @@ async function fetchWeatherData() {
             }
         }
 
+        async function fetchPressureHistory() {
+            try {
+                const response = await fetch(PRESSURE_API_URL + '?_=' + Date.now());
+                if (!response.ok) throw new Error(`Pressure API fetch failed: ${response.status} ${response.statusText}`);
+                const history = await response.json();
+
+                if (typeof Plotly !== 'undefined' && history.timestamps.length > 0) {
+                    const now = new Date();
+                    const minutesAgo = history.timestamps.map(ts => (now - new Date(ts)) / 60000);
+                    const pressTrace = {
+                        x: minutesAgo,
+                        y: history.sea_press_hpa,
+                        mode: 'lines',
+                        line: { color: '#007e33', width: 2 }
+                    };
+                    Plotly.newPlot('pressureChart', [pressTrace], {
+                        xaxis: { title: 'Hours ago', range: [Math.max(...minutesAgo), 0], gridcolor: '#e0e0e0', tickvals: [0, 60, 120, 180, 240, 300, 360], ticktext: ['0', '1', '2', '3', '4', '5', '6'] },
+                        yaxis: { title: 'hPa', gridcolor: '#e0e0e0' },
+                        margin: { t: 5, l: 50, r: 10, b: 30 },
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        plot_bgcolor: 'rgba(0,0,0,0)',
+                        font: { color: '#666', family: 'Roboto Condensed' }
+                    }, { displayModeBar: false, staticPlot: true });
+                }
+            } catch (err) {
+                console.error('Pressure history error:', err);
+            }
+        }
+
         window.addEventListener('load', () => {
             fetchWeatherData();
             fetchWindHistory();
+            fetchPressureHistory();
             setInterval(fetchWeatherData, UPDATE_INTERVAL);
             setInterval(fetchWindHistory, UPDATE_INTERVAL);
+            setInterval(fetchPressureHistory, UPDATE_INTERVAL);
         });
 
         // Camera fetching function

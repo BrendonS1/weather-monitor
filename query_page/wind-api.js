@@ -29,30 +29,49 @@ const server = http.createServer(async (req, res) => {
     }
 
     const pathname = req.url.split('?')[0];
-    if (req.method !== 'GET' || pathname !== '/api/wind-history') {
+
+    if (req.method === 'GET' && pathname === '/api/wind-history') {
+        try {
+            const result = await pool.query(
+                `SELECT device_utc_ts, wind_avg, wind_xwind
+                 FROM weather_update
+                 WHERE device_utc_ts >= NOW() - INTERVAL '60 minutes'
+                 ORDER BY device_utc_ts ASC`
+            );
+
+            const timestamps = result.rows.map(r => r.device_utc_ts);
+            const wind_avg = result.rows.map(r => parseFloat(r.wind_avg));
+            const wind_xwind = result.rows.map(r => parseFloat(r.wind_xwind));
+
+            res.writeHead(200, headers);
+            res.end(JSON.stringify({ timestamps, wind_avg, wind_xwind }));
+        } catch (err) {
+            console.error('Wind history query error:', err.message);
+            res.writeHead(500, headers);
+            res.end(JSON.stringify({ error: 'Query failed' }));
+        }
+    } else if (req.method === 'GET' && pathname === '/api/pressure-history') {
+        try {
+            const result = await pool.query(
+                `SELECT device_utc_ts, sea_press_hpa
+                 FROM weather_update
+                 WHERE device_utc_ts >= NOW() - INTERVAL '6 hours'
+                 ORDER BY device_utc_ts ASC`
+            );
+
+            const timestamps = result.rows.map(r => r.device_utc_ts);
+            const sea_press_hpa = result.rows.map(r => parseFloat(r.sea_press_hpa));
+
+            res.writeHead(200, headers);
+            res.end(JSON.stringify({ timestamps, sea_press_hpa }));
+        } catch (err) {
+            console.error('Pressure history query error:', err.message);
+            res.writeHead(500, headers);
+            res.end(JSON.stringify({ error: 'Query failed' }));
+        }
+    } else {
         res.writeHead(404, headers);
         res.end(JSON.stringify({ error: 'Not found' }));
-        return;
-    }
-
-    try {
-        const result = await pool.query(
-            `SELECT device_utc_ts, wind_avg, wind_xwind
-             FROM weather_update
-             WHERE device_utc_ts >= NOW() - INTERVAL '60 minutes'
-             ORDER BY device_utc_ts ASC`
-        );
-
-        const timestamps = result.rows.map(r => r.device_utc_ts);
-        const wind_avg = result.rows.map(r => parseFloat(r.wind_avg));
-        const wind_xwind = result.rows.map(r => parseFloat(r.wind_xwind));
-
-        res.writeHead(200, headers);
-        res.end(JSON.stringify({ timestamps, wind_avg, wind_xwind }));
-    } catch (err) {
-        console.error('Wind history query error:', err.message);
-        res.writeHead(500, headers);
-        res.end(JSON.stringify({ error: 'Query failed' }));
     }
 });
 
