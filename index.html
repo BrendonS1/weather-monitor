@@ -758,6 +758,17 @@ async function fetchWeatherData() {
             document.querySelector('.metar').textContent = metar;
         }
 
+        // Update browser title bar with live weather
+        if (stale) {
+            document.title = '🛩️ NZNE — NO DATA';
+        } else {
+            const gustDiffTitle = Math.round(data.wind0windmax10) - Math.round(data.wind0avgwind);
+            let title = `🛩️ NZNE ${frmtDir(windDir)}/${Math.round(data.wind0avgwind)}`;
+            if (gustDiffTitle > 5) title += `g${Math.round(data.wind0windmax10)}`;
+            title += `kts, ${Math.round(data.thb0seapress)}hpa`;
+            document.title = title;
+        }
+
         // Update timestamp
         const timeTypeStr = timeType(data.currYYYY, data.currMM, data.currDD);
         let timestampStr = `At ${frmtTime(data.currhh)}:${frmtTime(data.currmm)} ${timeTypeStr}`;
