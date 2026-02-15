@@ -37,13 +37,13 @@ const server = http.createServer(async (req, res) => {
 
     try {
         const result = await pool.query(
-            `SELECT device_local_ts, wind_avg, wind_xwind
+            `SELECT device_utc_ts, wind_avg, wind_xwind
              FROM weather_update
              WHERE device_utc_ts >= NOW() - INTERVAL '60 minutes'
-             ORDER BY device_local_ts ASC`
+             ORDER BY device_utc_ts ASC`
         );
 
-        const timestamps = result.rows.map(r => r.device_local_ts);
+        const timestamps = result.rows.map(r => r.device_utc_ts);
         const wind_avg = result.rows.map(r => parseFloat(r.wind_avg));
         const wind_xwind = result.rows.map(r => parseFloat(r.wind_xwind));
 
