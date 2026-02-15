@@ -946,8 +946,8 @@ async function fetchWeatherData() {
                         x: history.timestamps,
                         y: history.wind_xwind,
                         name: 'Crosswind',
-                        mode: 'markers',
-                        marker: { color: '#F44336', size: 5 }
+                        mode: 'lines',
+                        marker: { color: '#F44336', width: 1 }
                     };
                     Plotly.newPlot('windChart', [windAvgTrace, xwindTrace], {
                         xaxis: { type: 'date', gridcolor: '#e0e0e0' },
