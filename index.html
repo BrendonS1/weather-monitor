@@ -304,12 +304,21 @@
             color: #4CAF50;
         }
 
+        .live-indicator.no-data {
+            background: rgba(244, 67, 54, 0.1);
+            color: #F44336;
+        }
+
         .live-dot {
             width: 8px;
             height: 8px;
             background: #4CAF50;
             border-radius: 50%;
             animation: pulse 2s infinite;
+        }
+
+        .live-indicator.no-data .live-dot {
+            background: #F44336;
         }
 
         @keyframes pulse {
@@ -732,6 +741,17 @@ async function fetchWeatherData() {
             timestampStr += ` • Just updated`;
         }
         document.querySelector('.timestamp').textContent = timestampStr;
+
+        // Update live indicator based on data staleness
+        const liveIndicator = document.querySelector('.live-indicator');
+        const liveLabel = liveIndicator.lastChild;
+        if (dataAge >= 15) {
+            liveIndicator.classList.add('no-data');
+            liveLabel.textContent = ' NO DATA';
+        } else {
+            liveIndicator.classList.remove('no-data');
+            liveLabel.textContent = ' LIVE DATA';
+        }
 
         // ========== UPDATE TEMPERATURE CARD ==========
         const tempCard = document.querySelectorAll('.card')[1]; // Second card
