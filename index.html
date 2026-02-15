@@ -910,7 +910,7 @@ async function fetchWeatherData() {
             Plotly.newPlot('dirChart', [dirTrace], {
                 xaxis: { title: 'Minutes ago', autorange: 'reversed', gridcolor: '#e0e0e0' },
                 yaxis: { title: 'Direction (°M)', range: [370, 0], tickvals: [0, 90, 180, 270, 360] },
-                margin: { t: 10, l: 50, r: 50, b: 40 },
+                margin: { t: 10, l: 50, r: 20, b: 40 },
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 font: { color: '#666', family: 'Roboto Condensed' },
@@ -946,8 +946,8 @@ async function fetchWeatherData() {
                         x: history.timestamps,
                         y: history.wind_xwind,
                         name: 'Crosswind',
-                        mode: 'lines',
-                        line: { color: '#F44336', width: 2 }
+                        mode: 'markers',
+                        marker: { color: '#F44336', size: 5 }
                     };
                     Plotly.newPlot('windChart', [windAvgTrace, xwindTrace], {
                         xaxis: { type: 'date', gridcolor: '#e0e0e0' },
