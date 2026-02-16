@@ -4,3 +4,4 @@ COPY package.json ./
 COPY query_page/package.json ./query_page/
 RUN npm install
 COPY . .
+# no-cache
