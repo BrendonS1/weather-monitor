@@ -172,7 +172,8 @@ Look for these constants in `index.html` and update them:
 
 ```javascript
 const PROXY_URL = 'https://your-proxy-service.up.railway.app/?url=';
-const WIND_API_URL = 'https://your-wind-api-service.up.railway.app';
+const WIND_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app/api/wind-history';
+const PRESSURE_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app/api/pressure-history';
 ```
 
 ## Step 6: Verify Deployment
