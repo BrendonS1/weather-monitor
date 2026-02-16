@@ -14,4 +14,4 @@ http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': contentType });
         res.end(data);
     });
-}).listen(PORT, () => console.log(`Frontend on port ${PORT}`));
+}).listen(PORT, '0.0.0.0', () => console.log(`Frontend on port ${PORT}`));
