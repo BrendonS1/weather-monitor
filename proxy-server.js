@@ -15,6 +15,44 @@ const ALLOWED_URLS = [
     'http://weather.nsac.co.nz/cams/'  // Allow all camera images
 ];
 
+// Cache configuration
+const cache = new Map();
+const CACHE_DURATION = 60000; // 60 seconds (matches NemetData update frequency)
+
+function getCacheKey(targetUrl) {
+    return targetUrl;
+}
+
+function getCachedData(targetUrl) {
+    const key = getCacheKey(targetUrl);
+    const cached = cache.get(key);
+    
+    if (!cached) return null;
+    
+    const now = Date.now();
+    const age = now - cached.timestamp;
+    
+    // Return cached data if it's fresh enough
+    if (age < CACHE_DURATION) {
+        console.log(`Cache HIT for ${targetUrl} (age: ${Math.round(age/1000)}s)`);
+        return cached;
+    }
+    
+    console.log(`Cache EXPIRED for ${targetUrl} (age: ${Math.round(age/1000)}s)`);
+    return null;
+}
+
+function setCachedData(targetUrl, data, isBinary, contentType) {
+    const key = getCacheKey(targetUrl);
+    cache.set(key, {
+        data: data,
+        isBinary: isBinary,
+        contentType: contentType,
+        timestamp: Date.now()
+    });
+    console.log(`Cache SET for ${targetUrl}`);
+}
+
 function isAllowedUrl(targetUrl) {
     // Allow exact matches
     for (const allowed of ALLOWED_URLS) {
@@ -60,6 +98,22 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // Check cache first
+    const cached = getCachedData(targetUrl);
+    if (cached) {
+        const headers = {
+            'Content-Type': cached.contentType,
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Cache-Control': 'public, max-age=60',
+            'X-Cache': 'HIT'
+        };
+        
+        res.writeHead(200, headers);
+        res.end(cached.data);
+        return;
+    }
+
     console.log(`Proxying request to: ${targetUrl}`);
 
     // Fetch the data from the target URL
@@ -89,20 +143,37 @@ const server = http.createServer((req, res) => {
                 'Content-Type': proxyRes.headers['content-type'] || 'text/plain',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                'Cache-Control': 'no-cache'
+                'Cache-Control': 'public, max-age=60',
+                'X-Cache': 'MISS'
             };
 
+            // Cache the response
+            const responseData = isBinary ? Buffer.concat(chunks) : data;
+            setCachedData(targetUrl, responseData, isBinary, proxyRes.headers['content-type'] || 'text/plain');
+
             res.writeHead(200, headers);
-            
-            if (isBinary) {
-                res.end(Buffer.concat(chunks));
-            } else {
-                res.end(data);
-            }
+            res.end(responseData);
         });
 
     }).on('error', (err) => {
         console.error('Proxy error:', err);
+        
+        // If we have cached data, serve it even if it's stale (better than nothing)
+        const staleCache = cache.get(getCacheKey(targetUrl));
+        if (staleCache) {
+            console.log(`Serving STALE cache for ${targetUrl} due to error`);
+            const headers = {
+                'Content-Type': staleCache.contentType,
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Cache-Control': 'public, max-age=60',
+                'X-Cache': 'STALE'
+            };
+            res.writeHead(200, headers);
+            res.end(staleCache.data);
+            return;
+        }
+        
         res.writeHead(500, {
             'Content-Type': 'text/plain',
             'Access-Control-Allow-Origin': '*'
@@ -113,6 +184,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`CORS proxy server running on port ${PORT}`);
+    console.log(`Cache duration: ${CACHE_DURATION/1000} seconds`);
     console.log(`\nAllowed URLs:`);
     ALLOWED_URLS.forEach(u => console.log(`  - ${u}`));
 });
