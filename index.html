@@ -985,8 +985,8 @@ async function fetchWeatherData() {
                     const pressTrace = {
                         x: minutesAgo,
                         y: history.sea_press_hpa,
-                        mode: 'lines',
-                        line: { color: '#007e33', width: 2 }
+                        mode: 'markers',
+                        marker: { color: '#007e33', size: 3 }
                     };
                     Plotly.newPlot('pressureChart', [pressTrace], {
                         xaxis: { title: 'Hours ago', range: [Math.max(...minutesAgo), 0], gridcolor: '#e0e0e0', tickvals: [0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720], ticktext: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] },
