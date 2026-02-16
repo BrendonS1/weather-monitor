@@ -102,7 +102,6 @@ data collection and wind history charts.
   ───────────────────────  ─────────────────────────────  ─────────────────
   weather_data             Raw JSON snapshots (active)    weather_monitor.py
   weather_data_archive     Snapshots older than 90 days   weather_monitor.py
-  weather_readings         Parsed readings (unused)       weather_monitor.py
   weather_update           Parsed wind data with xwind    weather_monitor.py
 
 

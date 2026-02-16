@@ -45,10 +45,14 @@ weather-monitor/
 │   ├── query-server.js         Query API (password protected)
 │   ├── wind-api.js             Wind/pressure history API (public)
 │   └── package.json            Node dependencies (pg)
+├── Dockerfile.node                 Docker build for Node.js services
+├── Dockerfile.python               Docker build for Python worker
+├── serve-frontend.js               Static file server for Railway
 └── Documentation/
     ├── README.md                   This file
     ├── PROJECT_ARCHITECTURE.txt    System design and diagrams
     ├── RAILWAY_DEPLOYMENT.md       Railway deployment and DB migration guide
+    ├── railway-schema.sql          Full database schema migration script
     ├── POSTGRESQL_MIGRATION_GUIDE.md  SQLite to PostgreSQL migration
     ├── PROXY-README.md             CORS proxy setup
     ├── ARCHIVING-AND-POLLING-EXPLAINED.md
@@ -64,11 +68,13 @@ weather-monitor/
 
 ## Database Schema
 
+The full schema is in `Documentation/railway-schema.sql`.
+
 ### weather_data (active records, last 90 days)
 - `id` - SERIAL PRIMARY KEY
 - `captured_at` - TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 - `content_hash` - TEXT (SHA256 for duplicate detection)
-- `raw_content` - TEXT (full file content)
+- `raw_content` - JSONB (full parsed weather data)
 - `file_size` - INTEGER
 
 ### weather_data_archive (historical records > 90 days)
@@ -79,17 +85,31 @@ weather-monitor/
 - `file_size` - INTEGER
 - `archived_at` - TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
-### weather_readings (parsed data - unused)
-- `id` - SERIAL PRIMARY KEY
-- `capture_id` - INTEGER (FK to weather_data)
-- `timestamp` - TIMESTAMP
-- `data_json` - TEXT
+### weather_update (parsed weather data, populated by trigger)
+- `update_id` - BIGINT PRIMARY KEY (FK to weather_data.id)
+- `captured_at` - TIMESTAMPTZ
+- `device_utc_ts` - TIMESTAMPTZ
+- `device_local_ts` - TIMESTAMP
+- `wind_speed`, `wind_max_10`, `wind_max_60`, `wind_avg` - NUMERIC
+- `wind_dir_deg`, `wind_dir_deg_mag` - INTEGER (true and magnetic heading)
+- `wind_rwy_fav` - TEXT (favoured runway: RWY03 or RWY21)
+- `wind_xwind` - NUMERIC (crosswind component)
+- `temp_out_c`, `hum_out_pct`, `dew_out_c` - NUMERIC
+- `press_hpa`, `sea_press_hpa` - NUMERIC
+- `raw` - JSONB (full raw data)
+- Plus: station, timezone, lan_ip, indoor sensors, rain, battery status
 
-### weather_update (parsed wind/pressure data)
-- `device_utc_ts` - TIMESTAMP
-- `wind_avg` - FLOAT
-- `wind_xwind` - FLOAT
-- `sea_press_hpa` - FLOAT
+### weather_windtrend / weather_winddirtrend (trend arrays)
+- `update_id` - BIGINT (FK to weather_update)
+- `idx` - INTEGER (array index)
+- `wind` / `dir_deg` - NUMERIC
+
+### Trigger: trg_weather_data_parse
+Fires after each INSERT on `weather_data`. Calls `tr_weather_data_parse()` which:
+- Parses the JSONB `raw_content` into `weather_update` columns
+- Converts true heading to magnetic (NZNE variation 19E)
+- Determines favoured runway and calculates crosswind
+- Populates wind/direction trend tables
 
 ### Indexes
 - `idx_captured_at` on weather_data(captured_at)

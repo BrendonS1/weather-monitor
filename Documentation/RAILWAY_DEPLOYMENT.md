@@ -23,65 +23,34 @@ Guide for deploying the Weather Monitor solution to Railway, including migrating
 
 ## Step 3: Create the Database Schema
 
-Railway's PostgreSQL starts empty. Run the following SQL to create the tables and indexes that the application expects.
+Railway's PostgreSQL starts empty. The full schema migration script is provided at `Documentation/railway-schema.sql`. This includes all 6 tables, indexes, the trigger function, and the trigger.
 
-Connect to the Railway database using the credentials from the Variables tab:
+Connect to the Railway database and run the migration:
 
 ```bash
 # Using Railway CLI
 railway link
 railway connect postgres
 
-# Or connect directly with psql using the connection string from Railway
-psql "your-railway-database-url"
+# Then paste the contents of Documentation/railway-schema.sql
+
+# Or run it directly with psql
+psql "your-railway-database-url" -f Documentation/railway-schema.sql
 ```
 
-Then execute the schema:
+The migration creates:
 
-```sql
--- Active weather data (last 90 days)
-CREATE TABLE IF NOT EXISTS weather_data (
-    id SERIAL PRIMARY KEY,
-    captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    content_hash TEXT NOT NULL,
-    raw_content TEXT NOT NULL,
-    file_size INTEGER
-);
+| Object | Type | Description |
+|--------|------|-------------|
+| `weather_data` | Table | Raw JSONB snapshots (active, last 90 days) |
+| `weather_data_archive` | Table | Archived snapshots older than 90 days |
+| `weather_update` | Table | Parsed weather data (30+ columns, populated by trigger) |
+| `weather_windtrend` | Table | Wind trend array data |
+| `weather_winddirtrend` | Table | Wind direction trend array data |
+| `tr_weather_data_parse()` | Function | Parses raw JSONB into weather_update, calculates magnetic heading, favoured runway, and crosswind |
+| `trg_weather_data_parse` | Trigger | Fires after each INSERT on weather_data, calls the parse function |
 
--- Parsed readings (unused, but created by the app)
-CREATE TABLE IF NOT EXISTS weather_readings (
-    id SERIAL PRIMARY KEY,
-    capture_id INTEGER,
-    timestamp TIMESTAMP,
-    data_json TEXT,
-    FOREIGN KEY (capture_id) REFERENCES weather_data(id)
-);
-
--- Archive for records older than 90 days
-CREATE TABLE IF NOT EXISTS weather_data_archive (
-    id SERIAL PRIMARY KEY,
-    captured_at TIMESTAMP,
-    content_hash TEXT NOT NULL,
-    raw_content TEXT NOT NULL,
-    file_size INTEGER,
-    archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Parsed wind and pressure data
-CREATE TABLE IF NOT EXISTS weather_update (
-    device_utc_ts TIMESTAMP,
-    wind_avg FLOAT,
-    wind_xwind FLOAT,
-    sea_press_hpa FLOAT
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_captured_at ON weather_data(captured_at);
-CREATE INDEX IF NOT EXISTS idx_content_hash ON weather_data(content_hash);
-CREATE INDEX IF NOT EXISTS idx_archive_captured_at ON weather_data_archive(captured_at);
-```
-
-**Note:** The `weather_data`, `weather_readings`, and `weather_data_archive` tables are auto-created by `weather_monitor.py` on startup. The `weather_update` table must be created manually as it is not part of the auto-init. You can run the full script above to be safe — `IF NOT EXISTS` prevents duplicates.
+**Note:** The `weather_data` and `weather_data_archive` tables are also auto-created by `weather_monitor.py` on startup, but the trigger, function, `weather_update`, `weather_windtrend`, and `weather_winddirtrend` tables must be created via the migration script.
 
 ## Step 4: Dockerfiles
 

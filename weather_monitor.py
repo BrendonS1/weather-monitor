@@ -62,19 +62,8 @@ class WeatherMonitor:
                 id SERIAL PRIMARY KEY,
                 captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 content_hash TEXT NOT NULL,
-                raw_content TEXT NOT NULL,
+                raw_content JSONB NOT NULL,
                 file_size INTEGER
-            )
-        ''')
-        
-        # Table for parsed data (optional - customize based on actual data format)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS weather_readings (
-                id SERIAL PRIMARY KEY,
-                capture_id INTEGER,
-                timestamp TIMESTAMP,
-                data_json TEXT,
-                FOREIGN KEY (capture_id) REFERENCES weather_data(id)
             )
         ''')
         
@@ -221,6 +210,23 @@ class WeatherMonitor:
                 VALUES (%s, %s, %s, %s, %s)
             ''', record)
         
+        # Delete old trend data (references weather_data.id via update_id)
+        cursor.execute('''
+            DELETE FROM weather_windtrend
+            WHERE update_id IN (
+                SELECT id FROM weather_data
+                WHERE captured_at < NOW() - INTERVAL '%s days'
+            )
+        ''', (days,))
+
+        cursor.execute('''
+            DELETE FROM weather_winddirtrend
+            WHERE update_id IN (
+                SELECT id FROM weather_data
+                WHERE captured_at < NOW() - INTERVAL '%s days'
+            )
+        ''', (days,))
+
         # Delete from main table
         cursor.execute('''
             DELETE FROM weather_data
