@@ -111,7 +111,7 @@ const server = http.createServer((req, res) => {
     });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`CORS proxy server running on port ${PORT}`);
     console.log(`\nAllowed URLs:`);
     ALLOWED_URLS.forEach(u => console.log(`  - ${u}`));
