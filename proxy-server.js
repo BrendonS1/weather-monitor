@@ -1,5 +1,5 @@
 // Simple CORS proxy server for North Shore Airport weather data
-// This fetches data from weather.nsac.co.nz and serves it with CORS headers
+// This  fetches data from weather.nsac.co.nz and serves it with CORS headers
 
 const http = require('http');
 const https = require('https');
