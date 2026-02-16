@@ -83,51 +83,84 @@ CREATE INDEX IF NOT EXISTS idx_archive_captured_at ON weather_data_archive(captu
 
 **Note:** The `weather_data`, `weather_readings`, and `weather_data_archive` tables are auto-created by `weather_monitor.py` on startup. The `weather_update` table must be created manually as it is not part of the auto-init. You can run the full script above to be safe — `IF NOT EXISTS` prevents duplicates.
 
-## Step 4: Deploy the Services
+## Step 4: Dockerfiles
 
-Railway deploys services from the same repo. You need to create **separate services** for each component, each with its own start command.
+Railway's auto-detect builder (Railpack) can get confused when a repo contains both Python and Node.js files. To avoid this, the repo includes two Dockerfiles — one per runtime. Each service must be configured to use the correct one.
 
-### 4a. CORS Proxy (Web Service)
+### Dockerfile.node (for proxy, wind-api, query-server)
+
+```dockerfile
+FROM node:20-slim
+WORKDIR /app
+COPY package.json ./
+COPY query_page/package.json ./query_page/
+RUN npm install
+COPY . .
+```
+
+### Dockerfile.python (for the data collector worker)
+
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["python", "weather_monitor.py"]
+```
+
+## Step 5: Deploy the Services
+
+Railway deploys services from the same repo. You need to create **separate services** for each component. For each service, set the **Builder** to **Dockerfile** in the service Settings and point it to the correct Dockerfile.
+
+### 5a. CORS Proxy (Web Service)
 
 1. In your Railway project, click **New** > **GitHub Repo** > select your repo
-2. Go to the service **Settings**:
-   - **Service Name:** `weather-monitor-proxy`
+2. Go to the service **Settings** > **Build**:
+   - **Builder:** Dockerfile
+   - **Dockerfile Path:** `Dockerfile.node`
    - **Start Command:** `node proxy-server.js`
+   - **Service Name:** `weather-monitor-proxy`
 3. Railway auto-assigns a port via the `PORT` environment variable (already used by the code)
 4. Under **Networking**, generate a public domain
 
-### 4b. Wind/Pressure API (Web Service)
+### 5b. Wind/Pressure API (Web Service)
 
 1. **New** > **GitHub Repo** > select your repo
-2. **Settings:**
-   - **Service Name:** `weather-monitor-wind-api`
+2. **Settings** > **Build**:
+   - **Builder:** Dockerfile
+   - **Dockerfile Path:** `Dockerfile.node`
    - **Start Command:** `node query_page/wind-api.js`
+   - **Service Name:** `weather-monitor-wind-api`
 3. Under **Variables**, add a reference to the PostgreSQL service's `DATABASE_URL`:
    - Click **New Variable** > **Add Reference** > select the PostgreSQL service > `DATABASE_URL`
 4. Under **Networking**, generate a public domain
 
-### 4c. Query Server (Web Service)
+### 5c. Query Server (Web Service)
 
 1. **New** > **GitHub Repo** > select your repo
-2. **Settings:**
-   - **Service Name:** `query-weather-db-service`
+2. **Settings** > **Build**:
+   - **Builder:** Dockerfile
+   - **Dockerfile Path:** `Dockerfile.node`
    - **Start Command:** `node query_page/query-server.js`
+   - **Service Name:** `query-weather-db-service`
 3. Under **Variables**:
    - Add `DATABASE_URL` reference (same as above)
    - Add `QUERY_PASSWORD` with your chosen password
 4. Under **Networking**, generate a public domain
 
-### 4d. Data Collector (Background Worker)
+### 5d. Data Collector (Background Worker)
 
 1. **New** > **GitHub Repo** > select your repo
-2. **Settings:**
+2. **Settings** > **Build**:
+   - **Builder:** Dockerfile
+   - **Dockerfile Path:** `Dockerfile.python`
    - **Service Name:** `weather-monitor-worker`
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `python weather_monitor.py`
 3. Under **Variables**, add `DATABASE_URL` reference
 4. No public domain needed — this is a background worker
+5. The start command is set in the Dockerfile (`CMD ["python", "weather_monitor.py"]`)
 
-### 4e. Frontend (Static Site)
+### 5e. Frontend (Static Site)
 
 Railway doesn't have a dedicated static site type like Render. Options:
 
@@ -155,13 +188,17 @@ http.createServer((req, res) => {
 }).listen(PORT, () => console.log(`Frontend on port ${PORT}`));
 ```
 
-Then create a service with start command: `node serve-frontend.js`
+Then deploy as a service:
 
-**Option B: Use Nginx via Nixpacks**
+1. **New** > **GitHub Repo** > select your repo
+2. **Settings** > **Build**:
+   - **Builder:** Dockerfile
+   - **Dockerfile Path:** `Dockerfile.node`
+   - **Start Command:** `node serve-frontend.js`
+   - **Service Name:** `weather-monitor-frontend`
+3. Under **Networking**, generate a public domain
 
-Add a `nixpacks.toml` for the frontend service (more complex, Option A is simpler).
-
-## Step 5: Update Frontend URLs
+## Step 6: Update Frontend URLs
 
 After all services are deployed and have public domains, update `index.html` to point to the new Railway URLs:
 
@@ -176,7 +213,7 @@ const WIND_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app
 const PRESSURE_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app/api/pressure-history';
 ```
 
-## Step 6: Verify Deployment
+## Step 7: Verify Deployment
 
 1. Check each service's logs in the Railway dashboard for startup errors
 2. Visit the frontend URL — the dashboard should load
@@ -189,7 +226,9 @@ const PRESSURE_API_URL = 'https://weather-monitor-wind-api-production.up.railway
 
 | Feature | Render | Railway |
 |---------|--------|---------|
-| Static sites | Built-in static site type | Use a simple Node server |
+| Static sites | Built-in static site type | Use a Node server or Nginx |
+| Build system | Auto-detect | Railpack (auto) or Dockerfile |
+| Mixed runtimes | Handled per-service type | Use separate Dockerfiles |
 | Database URL | Auto-injected `DATABASE_URL` | Shared via variable references |
 | Port | `PORT` env var (same) | `PORT` env var (same) |
 | Sleep on free tier | Sleeps after 15 min inactivity | Depends on plan |
@@ -197,6 +236,11 @@ const PRESSURE_API_URL = 'https://weather-monitor-wind-api-production.up.railway
 | Deployments | Auto-deploy on push | Auto-deploy on push |
 
 ## Troubleshooting
+
+**"No start command found" or wrong runtime detected:**
+- Ensure the service's **Builder** is set to **Dockerfile** (not Railpack)
+- Verify the **Dockerfile Path** points to the correct file (`Dockerfile.node` or `Dockerfile.python`)
+- Railpack auto-detect can pick the wrong runtime when both `package.json` and `requirements.txt` exist in the repo root
 
 **Service can't connect to database:**
 - Ensure `DATABASE_URL` is added as a variable reference to the PostgreSQL service, not hardcoded
