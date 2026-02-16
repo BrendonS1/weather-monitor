@@ -1,200 +1,160 @@
 # Weather Data Monitor for weather.nsac.co.nz
 
-Automatically monitors and captures weather data from http://weather.nsac.co.nz/NEmetData.txt to a SQLite database.
+Real-time weather dashboard for North Shore Airport (NZNE) with historical data collection, wind/pressure history charts, and camera feeds.
 
 ## Features
 
-- ✅ Monitors weather data file for changes
-- ✅ Only stores data when content actually changes (no duplicates)
-- ✅ SQLite database storage with timestamps
-- ✅ Configurable check interval
-- ✅ Logging to both file and console
-- ✅ Can run continuously or as a one-time check (for cron)
-- ✅ Built-in statistics
+- Monitors weather data file for changes every 30 seconds
+- SHA256-based duplicate detection (only stores when content changes)
+- PostgreSQL database storage with timestamps
+- Automatic archiving of records older than 90 days
+- CORS proxy for browser access to weather data and camera feeds
+- Interactive wind history (60 min) and pressure history (12 hr) charts
+- Password-protected database query interface (SELECT only)
+- Logging to both file and console
 
-## Installation
+## Architecture
 
-1. **Install Python dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+The solution consists of 5 services:
 
-2. **Make the script executable (optional):**
-   ```bash
-   chmod +x weather_monitor.py
-   ```
+| Service | Type | File | Description |
+|---------|------|------|-------------|
+| Frontend | Static Site | `index.html` | Main dashboard with charts and camera feeds |
+| CORS Proxy | Web Service | `proxy-server.js` | Proxies requests to weather.nsac.co.nz |
+| Data Collector | Background Worker | `weather_monitor.py` | Fetches and stores weather data every 30s |
+| Query Server | Web Service | `query_page/query-server.js` | Password-protected SQL query interface |
+| Wind/Pressure API | Web Service | `query_page/wind-api.js` | Public API for wind and pressure history |
 
-## Usage
+## Tech Stack
 
-### Run Continuously (Default: 5 minutes)
+- **Frontend:** HTML5, CSS, Plotly.js (2.27.0)
+- **Backend:** Python 3 (data collector), Node.js (proxy, APIs)
+- **Database:** PostgreSQL
+- **Hosting:** Railway
 
-```bash
-python weather_monitor.py
+## Project Structure
+
+```
+weather-monitor/
+├── index.html                  Main dashboard (HTML + JS + CSS)
+├── proxy-server.js             CORS proxy service
+├── weather_monitor.py          Data collector (Python)
+├── requirements.txt            Python dependencies
+├── query_page/
+│   ├── query.html              Database query UI
+│   ├── query-server.js         Query API (password protected)
+│   ├── wind-api.js             Wind/pressure history API (public)
+│   └── package.json            Node dependencies (pg)
+└── Documentation/
+    ├── README.md                   This file
+    ├── PROJECT_ARCHITECTURE.txt    System design and diagrams
+    ├── RAILWAY_DEPLOYMENT.md       Railway deployment and DB migration guide
+    ├── POSTGRESQL_MIGRATION_GUIDE.md  SQLite to PostgreSQL migration
+    ├── PROXY-README.md             CORS proxy setup
+    ├── ARCHIVING-AND-POLLING-EXPLAINED.md
+    └── VISUAL-STUDIO-CODE-SETUP.md
 ```
 
-### Run with Custom Interval
+## Environment Variables
 
-```bash
-# Check every 10 minutes (600 seconds)
-python weather_monitor.py --interval 600
-
-# Check every 2 minutes (120 seconds)
-python weather_monitor.py --interval 120
-
-# Check every hour (3600 seconds)
-python weather_monitor.py --interval 3600
-```
-
-### Run Once (for Cron Jobs)
-
-```bash
-python weather_monitor.py --once
-```
-
-### View Statistics
-
-```bash
-python weather_monitor.py --stats
-```
-
-## Configuration
-
-Edit the `CONFIG` dictionary in `weather_monitor.py`:
-
-```python
-CONFIG = {
-    'url': 'http://weather.nsac.co.nz/NEmetData.txt',
-    'database': 'weather_data.db',
-    'check_interval': 300,  # seconds (default check interval)
-    'timeout': 30,          # request timeout
-    'log_file': 'weather_monitor.log'
-}
-```
+| Variable | Used By | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | weather_monitor.py, query-server.js, wind-api.js | PostgreSQL connection string |
+| `QUERY_PASSWORD` | query-server.js | Password for the query interface |
 
 ## Database Schema
 
-### weather_data table
-- `id` - Auto-increment primary key
-- `captured_at` - Timestamp when data was captured
-- `content_hash` - SHA256 hash of content (for duplicate detection)
-- `raw_content` - Full text content of the file
-- `file_size` - Size in bytes
+### weather_data (active records, last 90 days)
+- `id` - SERIAL PRIMARY KEY
+- `captured_at` - TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- `content_hash` - TEXT (SHA256 for duplicate detection)
+- `raw_content` - TEXT (full file content)
+- `file_size` - INTEGER
 
-### weather_readings table
-- `id` - Auto-increment primary key
-- `capture_id` - Foreign key to weather_data
-- `timestamp` - Data timestamp (if parseable)
-- `data_json` - Parsed data in JSON format
+### weather_data_archive (historical records > 90 days)
+- `id` - SERIAL PRIMARY KEY
+- `captured_at` - TIMESTAMP
+- `content_hash` - TEXT
+- `raw_content` - TEXT
+- `file_size` - INTEGER
+- `archived_at` - TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
-## Setting Up as a Background Service
+### weather_readings (parsed data - unused)
+- `id` - SERIAL PRIMARY KEY
+- `capture_id` - INTEGER (FK to weather_data)
+- `timestamp` - TIMESTAMP
+- `data_json` - TEXT
 
-### Linux (systemd)
+### weather_update (parsed wind/pressure data)
+- `device_utc_ts` - TIMESTAMP
+- `wind_avg` - FLOAT
+- `wind_xwind` - FLOAT
+- `sea_press_hpa` - FLOAT
 
-1. Create service file `/etc/systemd/system/weather-monitor.service`:
+### Indexes
+- `idx_captured_at` on weather_data(captured_at)
+- `idx_content_hash` on weather_data(content_hash)
+- `idx_archive_captured_at` on weather_data_archive(captured_at)
 
-```ini
-[Unit]
-Description=Weather Data Monitor
-After=network.target
+## API Endpoints
 
-[Service]
-Type=simple
-User=your-username
-WorkingDirectory=/path/to/weather_monitor
-ExecStart=/usr/bin/python3 /path/to/weather_monitor/weather_monitor.py --interval 300
-Restart=always
-RestartSec=10
+### CORS Proxy
+`GET /?url=[TARGET]` - Proxies whitelisted URLs from weather.nsac.co.nz
 
-[Install]
-WantedBy=multi-user.target
+### Wind History API (public)
+`GET /api/wind-history` - Returns last 60 minutes of wind data
+```json
+{ "timestamps": [], "wind_avg": [], "wind_xwind": [] }
 ```
 
-2. Enable and start:
-```bash
-sudo systemctl enable weather-monitor
-sudo systemctl start weather-monitor
-sudo systemctl status weather-monitor
+### Pressure History API (public)
+`GET /api/pressure-history` - Returns last 12 hours of pressure data
+```json
+{ "timestamps": [], "sea_press_hpa": [] }
 ```
 
-### Using Cron (Alternative)
-
-Add to crontab (`crontab -e`):
-
-```bash
-# Run every 5 minutes
-*/5 * * * * cd /path/to/weather_monitor && /usr/bin/python3 weather_monitor.py --once >> weather_monitor.log 2>&1
+### Query Server (password protected)
+`POST /query` - Execute SELECT queries against the database
+```json
+{ "password": "...", "sql": "SELECT ..." }
 ```
 
-### Windows (Task Scheduler)
-
-1. Open Task Scheduler
-2. Create Basic Task
-3. Set trigger (e.g., "Daily" then "Repeat every 5 minutes")
-4. Action: Start a program
-   - Program: `python.exe`
-   - Arguments: `C:\path\to\weather_monitor.py --interval 300`
-   - Start in: `C:\path\to\`
-
-## Querying the Database
-
-### Using Python
-
-```python
-import sqlite3
-
-conn = sqlite3.connect('weather_data.db')
-cursor = conn.cursor()
-
-# Get latest 10 captures
-cursor.execute('''
-    SELECT id, captured_at, file_size 
-    FROM weather_data 
-    ORDER BY captured_at DESC 
-    LIMIT 10
-''')
-
-for row in cursor.fetchall():
-    print(row)
-
-conn.close()
-```
-
-### Using SQLite CLI
+## Local Development
 
 ```bash
-sqlite3 weather_data.db
+# Install Python dependencies
+pip install -r requirements.txt
 
-# Show all captures
-SELECT id, captured_at, file_size FROM weather_data ORDER BY captured_at DESC;
+# Install Node dependencies
+cd query_page && npm install && cd ..
 
-# Count total captures
-SELECT COUNT(*) FROM weather_data;
-
-# Get latest capture content
-SELECT raw_content FROM weather_data ORDER BY captured_at DESC LIMIT 1;
+# Run services (each in a separate terminal)
+node proxy-server.js          # Port 3000
+node query_page/query-server.js  # Port 3001
+node query_page/wind-api.js      # Port 3002
+python weather_monitor.py        # Background worker
 ```
 
-## Logs
+Set `DATABASE_URL` and `QUERY_PASSWORD` environment variables before running.
 
-Check `weather_monitor.log` for:
-- Successful captures
-- Errors
-- Duplicate detections
-- Statistics
+## Usage
 
-## Troubleshooting
+```bash
+# Run continuously (default: 30 second interval)
+python weather_monitor.py
 
-**No data being captured:**
-- Check if the URL is accessible: `curl http://weather.nsac.co.nz/NEmetData.txt`
-- Check logs for errors
-- Verify network connectivity
+# Run with custom interval
+python weather_monitor.py --interval 60
 
-**Database locked errors:**
-- Ensure only one instance is running
-- Check file permissions
+# Run once (for cron/scheduled tasks)
+python weather_monitor.py --once
 
-**Import errors:**
-- Install requirements: `pip install -r requirements.txt`
+# View statistics
+python weather_monitor.py --stats
+
+# Run archiving manually
+python weather_monitor.py --archive
+```
 
 ## License
 
