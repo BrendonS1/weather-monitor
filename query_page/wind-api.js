@@ -69,6 +69,28 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(500, headers);
             res.end(JSON.stringify({ error: 'Query failed' }));
         }
+    } else if (req.method === 'GET' && pathname === '/api/runway-timeline') {
+        try {
+            const result = await pool.query(
+                `SELECT device_utc_ts, wind_rwy_fav, wind_avg
+                 FROM weather_update
+                 WHERE device_utc_ts >= NOW() - INTERVAL '7 days'
+                   AND wind_rwy_fav IS NOT NULL
+                   AND wind_avg IS NOT NULL
+                 ORDER BY device_utc_ts ASC`
+            );
+
+            const timestamps = result.rows.map(r => r.device_utc_ts);
+            const runway = result.rows.map(r => r.wind_rwy_fav === 'RWY21' ? 1 : 0);
+            const wind_avg = result.rows.map(r => parseFloat(r.wind_avg));
+
+            res.writeHead(200, headers);
+            res.end(JSON.stringify({ timestamps, runway, wind_avg }));
+        } catch (err) {
+            console.error('Runway timeline error:', err.message);
+            res.writeHead(500, headers);
+            res.end(JSON.stringify({ error: 'Query failed' }));
+        }
     } else if (req.method === 'GET' && pathname === '/api/stats') {
         try {
             function windDirQ(interval) {
