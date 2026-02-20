@@ -1,0 +1,13 @@
+{
+  "name": "weather-monitor",
+  "version": "1.0.0",
+  "description": "Real-time weather dashboard for North Shore Airport (NZNE)",
+  "scripts": {
+    "start:proxy": "node proxy-server.js",
+    "start:wind-api": "node query_page/wind-api.js",
+    "start:query-server": "node query_page/query-server.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}

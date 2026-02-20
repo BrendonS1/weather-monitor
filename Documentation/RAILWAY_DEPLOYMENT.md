@@ -23,159 +23,144 @@ Guide for deploying the Weather Monitor solution to Railway, including migrating
 
 ## Step 3: Create the Database Schema
 
-Railway's PostgreSQL starts empty. Run the following SQL to create the tables and indexes that the application expects.
+Railway's PostgreSQL starts empty. The full schema migration script is provided at `Documentation/railway-schema.sql`. This includes all tables, indexes, the trigger function, and the trigger.
 
-Connect to the Railway database using the credentials from the Variables tab:
+**Important:** Run the migration script *before* deploying the worker service. If the worker starts first, `weather_monitor.py` will auto-create the `weather_data` table with incorrect column types (TEXT instead of JSONB for `raw_content`), which will cause the trigger to fail.
+
+Connect to the Railway database and run the migration:
 
 ```bash
 # Using Railway CLI
 railway link
 railway connect postgres
 
-# Or connect directly with psql using the connection string from Railway
-psql "your-railway-database-url"
+# Then paste the contents of Documentation/railway-schema.sql
+
+# Or run it directly with psql
+psql "your-railway-database-url" -f Documentation/railway-schema.sql
 ```
 
-Then execute the schema:
+The migration creates:
 
-```sql
--- Active weather data (last 90 days)
-CREATE TABLE IF NOT EXISTS weather_data (
-    id SERIAL PRIMARY KEY,
-    captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    content_hash TEXT NOT NULL,
-    raw_content TEXT NOT NULL,
-    file_size INTEGER
-);
+| Object | Type | Description |
+|--------|------|-------------|
+| `weather_data` | Table | Raw JSONB snapshots (active, last 90 days) |
+| `weather_data_archive` | Table | Archived snapshots older than 90 days |
+| `weather_update` | Table | Parsed weather data (30+ columns, populated by trigger) |
+| `weather_windtrend` | Table | Wind trend array data |
+| `weather_winddirtrend` | Table | Wind direction trend array data |
+| `tr_weather_data_parse()` | Function | Parses raw JSONB into weather_update, calculates magnetic heading, favoured runway, and crosswind |
+| `trg_weather_data_parse` | Trigger | Fires after each INSERT on weather_data, calls the parse function |
 
--- Parsed readings (unused, but created by the app)
-CREATE TABLE IF NOT EXISTS weather_readings (
-    id SERIAL PRIMARY KEY,
-    capture_id INTEGER,
-    timestamp TIMESTAMP,
-    data_json TEXT,
-    FOREIGN KEY (capture_id) REFERENCES weather_data(id)
-);
+**Note:** The `weather_data` and `weather_data_archive` tables are also auto-created by `weather_monitor.py` on startup, but the trigger, function, `weather_update`, `weather_windtrend`, and `weather_winddirtrend` tables must be created via the migration script.
 
--- Archive for records older than 90 days
-CREATE TABLE IF NOT EXISTS weather_data_archive (
-    id SERIAL PRIMARY KEY,
-    captured_at TIMESTAMP,
-    content_hash TEXT NOT NULL,
-    raw_content TEXT NOT NULL,
-    file_size INTEGER,
-    archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+## Step 4: Dockerfiles
 
--- Parsed wind and pressure data
-CREATE TABLE IF NOT EXISTS weather_update (
-    device_utc_ts TIMESTAMP,
-    wind_avg FLOAT,
-    wind_xwind FLOAT,
-    sea_press_hpa FLOAT
-);
+Railway's auto-detect builder (Railpack) gets confused when a repo contains both Python and Node.js files (`package.json` and `requirements.txt` in the same root). To avoid this, the repo includes two Dockerfiles — one per runtime. Each service **must** be configured to use the Dockerfile builder, not Railpack.
 
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_captured_at ON weather_data(captured_at);
-CREATE INDEX IF NOT EXISTS idx_content_hash ON weather_data(content_hash);
-CREATE INDEX IF NOT EXISTS idx_archive_captured_at ON weather_data_archive(captured_at);
+### Dockerfile.node (for proxy, wind-api, query-server, frontend)
+
+```dockerfile
+FROM node:20-slim
+WORKDIR /app
+COPY package.json ./
+COPY query_page/package.json ./query_page/
+RUN npm install
+COPY . .
 ```
 
-**Note:** The `weather_data`, `weather_readings`, and `weather_data_archive` tables are auto-created by `weather_monitor.py` on startup. The `weather_update` table must be created manually as it is not part of the auto-init. You can run the full script above to be safe — `IF NOT EXISTS` prevents duplicates.
+### Dockerfile.python (for the data collector worker)
 
-## Step 4: Deploy the Services
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["python", "weather_monitor.py"]
+```
 
-Railway deploys services from the same repo. You need to create **separate services** for each component, each with its own start command.
+## Step 5: Deploy the Services
 
-### 4a. CORS Proxy (Web Service)
+Railway deploys services from the same repo. You need to create **separate services** for each component. For each service, set the **Builder** to **Dockerfile** in the service Settings and point it to the correct Dockerfile.
+
+**Important:** All Node.js services must bind to `0.0.0.0` (not localhost) for Railway's networking to route traffic. This is already done in the code via `.listen(PORT, '0.0.0.0', ...)`.
+
+### 5a. CORS Proxy (Web Service)
 
 1. In your Railway project, click **New** > **GitHub Repo** > select your repo
-2. Go to the service **Settings**:
-   - **Service Name:** `weather-monitor-proxy`
+2. Go to the service **Settings** > **Build**:
+   - **Builder:** Dockerfile
+   - **Dockerfile Path:** `Dockerfile.node`
    - **Start Command:** `node proxy-server.js`
-3. Railway auto-assigns a port via the `PORT` environment variable (already used by the code)
-4. Under **Networking**, generate a public domain
+   - **Service Name:** `weather-monitor-proxy`
+3. Under **Variables**, add `PORT=8080`
+4. Under **Networking**, generate a public domain (enter port `8080` when prompted)
 
-### 4b. Wind/Pressure API (Web Service)
+### 5b. Wind/Pressure API (Web Service)
 
 1. **New** > **GitHub Repo** > select your repo
-2. **Settings:**
-   - **Service Name:** `weather-monitor-wind-api`
+2. **Settings** > **Build**:
+   - **Builder:** Dockerfile
+   - **Dockerfile Path:** `Dockerfile.node`
    - **Start Command:** `node query_page/wind-api.js`
-3. Under **Variables**, add a reference to the PostgreSQL service's `DATABASE_URL`:
-   - Click **New Variable** > **Add Reference** > select the PostgreSQL service > `DATABASE_URL`
-4. Under **Networking**, generate a public domain
+   - **Service Name:** `weather-monitor-wind-api`
+3. Under **Variables**:
+   - Add `PORT=8080`
+   - Add a reference to the PostgreSQL service's `DATABASE_URL`: click **New Variable** > **Add Reference** > select the PostgreSQL service > `DATABASE_URL`
+4. Under **Networking**, generate a public domain (enter port `8080` when prompted)
 
-### 4c. Query Server (Web Service)
+### 5c. Query Server (Web Service)
 
 1. **New** > **GitHub Repo** > select your repo
-2. **Settings:**
-   - **Service Name:** `query-weather-db-service`
+2. **Settings** > **Build**:
+   - **Builder:** Dockerfile
+   - **Dockerfile Path:** `Dockerfile.node`
    - **Start Command:** `node query_page/query-server.js`
+   - **Service Name:** `query-weather-db-service`
 3. Under **Variables**:
+   - Add `PORT=8080`
    - Add `DATABASE_URL` reference (same as above)
    - Add `QUERY_PASSWORD` with your chosen password
-4. Under **Networking**, generate a public domain
+4. Under **Networking**, generate a public domain (enter port `8080` when prompted)
 
-### 4d. Data Collector (Background Worker)
+### 5d. Data Collector (Background Worker)
 
 1. **New** > **GitHub Repo** > select your repo
-2. **Settings:**
+2. **Settings** > **Build**:
+   - **Builder:** Dockerfile
+   - **Dockerfile Path:** `Dockerfile.python`
    - **Service Name:** `weather-monitor-worker`
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `python weather_monitor.py`
 3. Under **Variables**, add `DATABASE_URL` reference
 4. No public domain needed — this is a background worker
+5. The start command is set in the Dockerfile (`CMD ["python", "weather_monitor.py"]`)
 
-### 4e. Frontend (Static Site)
+### 5e. Frontend (Static Site)
 
-Railway doesn't have a dedicated static site type like Render. Options:
+Railway doesn't have a dedicated static site type like Render. The repo includes `serve-frontend.js`, a simple Node.js static file server.
 
-**Option A: Serve with a simple Node server**
+1. **New** > **GitHub Repo** > select your repo
+2. **Settings** > **Build**:
+   - **Builder:** Dockerfile
+   - **Dockerfile Path:** `Dockerfile.node`
+   - **Start Command:** `node serve-frontend.js`
+   - **Service Name:** `weather-monitor-frontend`
+3. Under **Variables**, add `PORT=8080`
+4. Under **Networking**, generate a public domain (enter port `8080` when prompted)
 
-Create a file `serve-frontend.js` in the repo root:
+## Step 6: Update Frontend URLs
 
-```javascript
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const PORT = process.env.PORT || 3000;
-
-http.createServer((req, res) => {
-    const file = req.url === '/' ? '/index.html' : req.url;
-    const filePath = path.join(__dirname, file);
-    const ext = path.extname(filePath);
-    const contentType = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css' }[ext] || 'text/plain';
-
-    fs.readFile(filePath, (err, data) => {
-        if (err) { res.writeHead(404); res.end('Not found'); return; }
-        res.writeHead(200, { 'Content-Type': contentType });
-        res.end(data);
-    });
-}).listen(PORT, () => console.log(`Frontend on port ${PORT}`));
-```
-
-Then create a service with start command: `node serve-frontend.js`
-
-**Option B: Use Nginx via Nixpacks**
-
-Add a `nixpacks.toml` for the frontend service (more complex, Option A is simpler).
-
-## Step 5: Update Frontend URLs
-
-After all services are deployed and have public domains, update `index.html` to point to the new Railway URLs:
-
-1. Replace the Render proxy URL with your Railway proxy domain
-2. Replace the Render wind API URL with your Railway wind API domain
+After all services are deployed and have public domains, update `index.html` to point to the new Railway URLs. **Include the `https://` protocol** — without it, the browser treats them as relative paths.
 
 Look for these constants in `index.html` and update them:
 
 ```javascript
 const PROXY_URL = 'https://your-proxy-service.up.railway.app/?url=';
-const WIND_API_URL = 'https://your-wind-api-service.up.railway.app';
+const WIND_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app/api/wind-history';
+const PRESSURE_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app/api/pressure-history';
 ```
 
-## Step 6: Verify Deployment
+## Step 7: Verify Deployment
 
 1. Check each service's logs in the Railway dashboard for startup errors
 2. Visit the frontend URL — the dashboard should load
@@ -188,30 +173,45 @@ const WIND_API_URL = 'https://your-wind-api-service.up.railway.app';
 
 | Feature | Render | Railway |
 |---------|--------|---------|
-| Static sites | Built-in static site type | Use a simple Node server |
+| Static sites | Built-in static site type | Use a Node server (`serve-frontend.js`) |
+| Build system | Auto-detect | Must use Dockerfile for mixed-runtime repos |
+| Mixed runtimes | Handled per-service type | Separate Dockerfiles (`Dockerfile.node`, `Dockerfile.python`) |
 | Database URL | Auto-injected `DATABASE_URL` | Shared via variable references |
-| Port | `PORT` env var (same) | `PORT` env var (same) |
-| Sleep on free tier | Sleeps after 15 min inactivity | Depends on plan |
+| Port binding | Automatic | Must bind to `0.0.0.0`; set `PORT` variable explicitly |
+| Network port | Auto-detected | Must specify port when generating public domain |
 | Background workers | Dedicated worker type | Any service (no public domain) |
-| Deployments | Auto-deploy on push | Auto-deploy on push |
+| Deployments | Auto-deploy on push | Auto-deploy on push (connected to branch) |
 
 ## Troubleshooting
+
+**"No start command found" or wrong runtime detected:**
+- Ensure the service's **Builder** is set to **Dockerfile** (not Railpack)
+- Verify the **Dockerfile Path** points to the correct file (`Dockerfile.node` or `Dockerfile.python`)
+- Railpack auto-detect picks the wrong runtime when both `package.json` and `requirements.txt` exist in the repo root
+
+**502 Bad Gateway or "Application failed to respond":**
+- Check that `PORT` is set as a variable (e.g. `PORT=8080`) and the Networking port matches
+- Verify the server binds to `0.0.0.0`, not just localhost — Railway can't route to `127.0.0.1`
+- Check deploy logs to confirm the service started and is listening
+
+**JSONB / trigger errors (operator does not exist: text ->> unknown):**
+- The `weather_data.raw_content` column must be `JSONB`, not `TEXT`
+- If the worker auto-created the table before the migration script ran, fix it with:
+  ```sql
+  ALTER TABLE weather_data ALTER COLUMN raw_content TYPE JSONB USING raw_content::jsonb;
+  ```
+- Always run the migration script *before* starting the worker for the first time
 
 **Service can't connect to database:**
 - Ensure `DATABASE_URL` is added as a variable reference to the PostgreSQL service, not hardcoded
 - Check that the PostgreSQL service is running
-- Railway's internal networking uses private URLs — use the reference variable, not the public URL
 
-**Port errors:**
-- Railway sets the `PORT` environment variable automatically
-- All services already use `process.env.PORT`, so this should work out of the box
-
-**Worker keeps restarting:**
-- Check logs for Python errors
-- Ensure `requirements.txt` dependencies installed correctly
-- Verify `DATABASE_URL` is set in the worker's variables
+**Deployment not updating after push:**
+- Verify the service is connected to the correct GitHub repo and branch in **Settings** > **Source**
+- If a deployment shows as "successful" but isn't active, delete the service and recreate it
+- To force a redeploy: `git commit --allow-empty -m "trigger redeploy" && git push origin railway`
 
 **Frontend can't reach APIs:**
 - Ensure each API service has a public domain generated under Networking
-- Update the URLs in `index.html` to match the Railway domains
+- Update the URLs in `index.html` to match the Railway domains — include `https://` protocol
 - Check browser console for CORS errors
