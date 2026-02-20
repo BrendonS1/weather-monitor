@@ -108,7 +108,7 @@ const server = http.createServer(async (req, res) => {
                         END AS sector,
                         COUNT(*)::integer AS count
                      FROM weather_update
-                     WHERE device_utc_ts >= NOW() - INTERVAL $1
+                     WHERE device_utc_ts >= NOW() - $1::interval
                        AND wind_dir_deg_mag IS NOT NULL
                      GROUP BY sector`,
                     [interval]
@@ -119,7 +119,7 @@ const server = http.createServer(async (req, res) => {
                 return pool.query(
                     `SELECT wind_rwy_fav AS runway, COUNT(*)::integer AS count
                      FROM weather_update
-                     WHERE device_utc_ts >= NOW() - INTERVAL $1
+                     WHERE device_utc_ts >= NOW() - $1::interval
                        AND wind_rwy_fav IS NOT NULL
                      GROUP BY wind_rwy_fav`,
                     [interval]
