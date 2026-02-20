@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Set-Location ''D:\\\\Development\\\\weather-monitor''; git show ''c8a29ae:weather_monitor.py''\")",
+      "Bash(Select-String \"weather_update|INSERT INTO weather_update|def.*parse|def.*store\")",
+      "Bash(powershell -Command \"Set-Location ''D:\\\\Development\\\\weather-monitor''; git log --all --oneline --follow -- weather_monitor.py\")"
+    ]
+  }
+}

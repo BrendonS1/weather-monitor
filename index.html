@@ -345,6 +345,18 @@
                 display: none;
             }
         }
+
+        @keyframes skeleton-pulse {
+            0%, 100% { opacity: 0.45; }
+            50% { opacity: 0.9; }
+        }
+        .skeleton-loader {
+            display: inline-block;
+            background: #c8c8c8;
+            border-radius: 4px;
+            animation: skeleton-pulse 1.2s ease-in-out infinite;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -628,6 +640,36 @@
             }
         }
         // ========== END CLIENT-SIDE CACHE ==========
+
+        function setLoadingState() {
+            function skl(w, h) {
+                return `<span class="skeleton-loader" style="width:${w};height:${h};"></span>`;
+            }
+            // Header
+            document.querySelector('[style*="font-size: 24px"]').innerHTML = skl('90px', '26px');
+            document.querySelector('.metar').innerHTML = skl('75%', '30px');
+            document.querySelector('.timestamp').innerHTML = skl('210px', '13px');
+            // Wind
+            document.querySelector('.wind-direction').innerHTML = skl('130px', '38px');
+            ['windCurrent', 'windAvg', 'windGust10', 'windMax60', 'windVar', 'windCrosswind'].forEach(id => {
+                document.getElementById(id).innerHTML = skl('60px', '15px');
+            });
+            // Pressure card
+            const pressCard = document.querySelectorAll('.card')[1];
+            pressCard.querySelector('.card-value').innerHTML = skl('90px', '50px');
+            pressCard.querySelectorAll('.card-detail-value').forEach(el => el.innerHTML = skl('70px', '15px'));
+            // Temperature card
+            const tempCard = document.querySelectorAll('.card')[2];
+            tempCard.querySelector('.card-value').innerHTML = skl('70px', '50px');
+            tempCard.querySelectorAll('.card-detail-value').forEach(el => el.innerHTML = skl('90px', '15px'));
+            // Rainfall card
+            const rainCard = document.querySelectorAll('.card')[3];
+            rainCard.querySelector('.card-value').innerHTML = skl('80px', '50px');
+            rainCard.querySelector('.badge').innerHTML = skl('60px', '15px');
+            rainCard.querySelectorAll('.card-detail-value').forEach(el => el.innerHTML = skl('70px', '15px'));
+            // Stats
+            document.querySelectorAll('.stat-value').forEach(el => el.innerHTML = skl('55px', '20px'));
+        }
 
         function t2m(degT) {
             let degM = degT - 19;
@@ -1050,6 +1092,9 @@
         }
 
         window.addEventListener('load', () => {
+            if (!getCachedData()) {
+                setLoadingState();
+            }
             fetchWeatherData();
             fetchWindHistory();
             fetchPressureHistory();

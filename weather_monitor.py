@@ -246,7 +246,7 @@ class WeatherMonitor:
         
         content = self.fetch_data()
         
-        if content is None:
+        if not content:
             logger.warning("Failed to fetch data")
             return False
         
