@@ -69,6 +69,84 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(500, headers);
             res.end(JSON.stringify({ error: 'Query failed' }));
         }
+    } else if (req.method === 'GET' && pathname === '/api/runway-timeline') {
+        try {
+            const result = await pool.query(
+                `SELECT device_utc_ts, wind_rwy_fav, wind_avg
+                 FROM weather_update
+                 WHERE device_utc_ts >= NOW() - INTERVAL '7 days'
+                   AND wind_rwy_fav IS NOT NULL
+                   AND wind_avg IS NOT NULL
+                 ORDER BY device_utc_ts ASC`
+            );
+
+            const timestamps = result.rows.map(r => r.device_utc_ts);
+            const runway = result.rows.map(r => r.wind_rwy_fav === 'RWY21' ? 1 : 0);
+            const wind_avg = result.rows.map(r => parseFloat(r.wind_avg));
+
+            res.writeHead(200, headers);
+            res.end(JSON.stringify({ timestamps, runway, wind_avg }));
+        } catch (err) {
+            console.error('Runway timeline error:', err.message);
+            res.writeHead(500, headers);
+            res.end(JSON.stringify({ error: 'Query failed' }));
+        }
+    } else if (req.method === 'GET' && pathname === '/api/stats') {
+        try {
+            function windDirQ(interval) {
+                return pool.query(
+                    `SELECT
+                        CASE
+                            WHEN wind_dir_deg_mag >= 337.5 OR wind_dir_deg_mag < 22.5  THEN 'N'
+                            WHEN wind_dir_deg_mag >= 22.5  AND wind_dir_deg_mag < 67.5  THEN 'NE'
+                            WHEN wind_dir_deg_mag >= 67.5  AND wind_dir_deg_mag < 112.5 THEN 'E'
+                            WHEN wind_dir_deg_mag >= 112.5 AND wind_dir_deg_mag < 157.5 THEN 'SE'
+                            WHEN wind_dir_deg_mag >= 157.5 AND wind_dir_deg_mag < 202.5 THEN 'S'
+                            WHEN wind_dir_deg_mag >= 202.5 AND wind_dir_deg_mag < 247.5 THEN 'SW'
+                            WHEN wind_dir_deg_mag >= 247.5 AND wind_dir_deg_mag < 292.5 THEN 'W'
+                            WHEN wind_dir_deg_mag >= 292.5 AND wind_dir_deg_mag < 337.5 THEN 'NW'
+                        END AS sector,
+                        COUNT(*)::integer AS count
+                     FROM weather_update
+                     WHERE device_utc_ts >= NOW() - $1::interval
+                       AND wind_dir_deg_mag IS NOT NULL
+                     GROUP BY sector`,
+                    [interval]
+                );
+            }
+
+            function runwayQ(interval) {
+                return pool.query(
+                    `SELECT wind_rwy_fav AS runway, COUNT(*)::integer AS count
+                     FROM weather_update
+                     WHERE device_utc_ts >= NOW() - $1::interval
+                       AND wind_rwy_fav IS NOT NULL
+                     GROUP BY wind_rwy_fav`,
+                    [interval]
+                );
+            }
+
+            const [dir7d, dir365d, rwy24h, rwy7d, rwy365d] = await Promise.all([
+                windDirQ('7 days'),
+                windDirQ('365 days'),
+                runwayQ('24 hours'),
+                runwayQ('7 days'),
+                runwayQ('365 days'),
+            ]);
+
+            res.writeHead(200, headers);
+            res.end(JSON.stringify({
+                windDir7d:   dir7d.rows,
+                windDir365d: dir365d.rows,
+                runway24h:   rwy24h.rows,
+                runway7d:    rwy7d.rows,
+                runway365d:  rwy365d.rows
+            }));
+        } catch (err) {
+            console.error('Stats query error:', err.message);
+            res.writeHead(500, headers);
+            res.end(JSON.stringify({ error: 'Query failed' }));
+        }
     } else {
         res.writeHead(404, headers);
         res.end(JSON.stringify({ error: 'Not found' }));

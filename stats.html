@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>North Shore Airport - Historic Statistics</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛩️</text></svg>">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #007e33 0%, #00b84d 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px 40px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header h1 { font-size: 32px; font-weight: 700; color: #1a1a1a; }
+        .header-sub { font-size: 14px; color: #888; margin-top: 6px; }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        .section-heading {
+            font-size: 20px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 15px;
+            padding-left: 5px;
+        }
+
+        .pie-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .pie-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .pie-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            color: #bbb;
+            font-size: 14px;
+        }
+
+        .chart-legend {
+            font-size: 12px;
+            color: #888;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .legend-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+
+        .nav-btn-outline {
+            display: inline-block;
+            padding: 8px 16px;
+            background: transparent;
+            color: #007e33;
+            border: 2px solid #007e33;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .nav-btn-outline:hover {
+            background: rgba(0, 126, 51, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="header">
+            <div>
+                <h1>🛩️ North Shore Airport — Historic Statistics</h1>
+                <div class="header-sub">NZNE &bull; Wind direction and runway use analysis</div>
+            </div>
+            <a href="index.html" class="nav-btn-outline">← Live Dashboard</a>
+        </div>
+
+        <!-- Wind Direction Pies -->
+        <div class="section-heading">Wind Direction</div>
+        <div class="pie-grid-2">
+            <div class="card">
+                <div class="card-title">Wind Direction — Last 7 Days</div>
+                <div id="windDir7dChart" class="pie-loading">Loading…</div>
+                <div class="chart-legend">
+                    <span class="legend-dot" style="background:#3b82f6;"></span>RWY03 favoured &nbsp;
+                    <span class="legend-dot" style="background:#007e33;"></span>RWY21 favoured
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">Wind Direction — Last 365 Days</div>
+                <div id="windDir365dChart" class="pie-loading">Loading…</div>
+                <div class="chart-legend">
+                    <span class="legend-dot" style="background:#3b82f6;"></span>RWY03 favoured &nbsp;
+                    <span class="legend-dot" style="background:#007e33;"></span>RWY21 favoured
+                </div>
+            </div>
+        </div>
+
+        <!-- Runway Use Pies -->
+        <div class="section-heading">Runway Use</div>
+        <div class="pie-grid-3">
+            <div class="card">
+                <div class="card-title">Runway Use — Last 24 Hours</div>
+                <div id="runway24hChart" class="pie-loading">Loading…</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Runway Use — Last 7 Days</div>
+                <div id="runway7dChart" class="pie-loading">Loading…</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Runway Use — Last 365 Days</div>
+                <div id="runway365dChart" class="pie-loading">Loading…</div>
+            </div>
+        </div>
+
+        <!-- Runway in Use Timeline -->
+        <div class="section-heading">Runway in Use Timeline</div>
+        <div class="card">
+            <div class="card-title">Runway in Use — Last 7 Days &bull; Dot colour = wind strength</div>
+            <div id="runwayTimeline" class="pie-loading">Loading…</div>
+        </div>
+
+        <div class="footer">
+            North Shore Airport (NZNE) • Historic Statistics<br>
+            Data from weather station database
+        </div>
+    </div>
+
+    <script>
+        const STATS_API_URL    = 'https://weather-monitor-wind-api-production.up.railway.app/api/stats';
+        const TIMELINE_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app/api/runway-timeline';
+
+        const SECTOR_ORDER = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        const SECTOR_COLORS = {
+            'N':  '#3b82f6',
+            'NE': '#60a5fa',
+            'E':  '#93c5fd',
+            'SE': '#34d399',
+            'S':  '#007e33',
+            'SW': '#15803d',
+            'W':  '#16a34a',
+            'NW': '#f59e0b'
+        };
+        const RUNWAY_COLORS = { 'RWY21': '#007e33', 'RWY03': '#3b82f6' };
+
+        const PLOTLY_BASE = {
+            margin: { t: 10, l: 10, r: 10, b: 10 },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: '#555', family: 'Roboto Condensed', size: 13 },
+            showlegend: false
+        };
+
+        function renderWindDirPie(elementId, rows) {
+            const el = document.getElementById(elementId);
+            const sectorMap = {};
+            for (const row of rows) { if (row.sector) sectorMap[row.sector] = row.count; }
+            const labels = SECTOR_ORDER.filter(s => sectorMap[s] > 0);
+            const values = labels.map(s => sectorMap[s]);
+            const colors = labels.map(s => SECTOR_COLORS[s]);
+
+            if (labels.length === 0) {
+                el.className = 'pie-loading';
+                el.textContent = 'No data available';
+                return;
+            }
+            el.className = '';
+            el.style.height = '300px';
+
+            Plotly.newPlot(elementId, [{
+                type: 'pie', labels, values,
+                marker: { colors },
+                textinfo: 'label+percent',
+                hovertemplate: '<b>%{label}</b><br>%{value} observations<br>%{percent}<extra></extra>',
+                direction: 'clockwise',
+                sort: false,
+                rotation: 90
+            }], PLOTLY_BASE, { displayModeBar: false, responsive: true });
+        }
+
+        function renderRunwayPie(elementId, rows) {
+            const el = document.getElementById(elementId);
+            if (!rows || rows.length === 0) {
+                el.className = 'pie-loading';
+                el.textContent = 'No data available';
+                return;
+            }
+            const labels = rows.map(r => r.runway);
+            const values = rows.map(r => r.count);
+            const colors = labels.map(r => RUNWAY_COLORS[r] || '#999');
+            el.className = '';
+            el.style.height = '300px';
+
+            Plotly.newPlot(elementId, [{
+                type: 'pie', labels, values,
+                marker: { colors },
+                textinfo: 'label+percent',
+                hovertemplate: '<b>%{label}</b><br>%{value} observations<br>%{percent}<extra></extra>'
+            }], PLOTLY_BASE, { displayModeBar: false, responsive: true });
+        }
+
+        async function fetchStats() {
+            try {
+                const response = await fetch(STATS_API_URL + '?_=' + Date.now());
+                if (!response.ok) throw new Error('Stats API failed');
+                const data = await response.json();
+                renderWindDirPie('windDir7dChart',   data.windDir7d);
+                renderWindDirPie('windDir365dChart', data.windDir365d);
+                renderRunwayPie('runway24hChart',    data.runway24h);
+                renderRunwayPie('runway7dChart',     data.runway7d);
+                renderRunwayPie('runway365dChart',   data.runway365d);
+            } catch (err) {
+                console.error('Stats fetch error:', err);
+                ['windDir7dChart','windDir365dChart','runway24hChart','runway7dChart','runway365dChart'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) { el.className = 'pie-loading'; el.textContent = 'Failed to load'; }
+                });
+            }
+        }
+
+        async function fetchRunwayTimeline() {
+            const el = document.getElementById('runwayTimeline');
+            try {
+                const response = await fetch(TIMELINE_API_URL + '?_=' + Date.now());
+                if (!response.ok) throw new Error('Timeline API failed');
+                const data = await response.json();
+
+                if (!data.timestamps || data.timestamps.length === 0) {
+                    el.className = 'pie-loading';
+                    el.textContent = 'No data available';
+                    return;
+                }
+
+                el.className = '';
+                el.style.height = '240px';
+
+                Plotly.newPlot('runwayTimeline', [{
+                    type: 'scattergl',
+                    x: data.timestamps,
+                    y: data.runway,
+                    mode: 'markers',
+                    marker: {
+                        size: 5,
+                        color: data.wind_avg,
+                        colorscale: [[0, '#22c55e'], [0.25, '#86efac'], [0.55, '#fbbf24'], [1, '#ef4444']],
+                        cmin: 0,
+                        cmax: 25,
+                        colorbar: {
+                            title: { text: 'Wind (kts)', font: { family: 'Roboto Condensed', size: 12, color: '#666' } },
+                            tickfont: { family: 'Roboto Condensed', size: 11, color: '#666' },
+                            thickness: 14,
+                            len: 0.8
+                        }
+                    },
+                    hovertemplate: '<b>%{text}</b><br>%{x|%d %b %H:%M}<br>Wind: %{marker.color:.0f} kts<extra></extra>',
+                    text: data.runway.map(r => r === 1 ? 'RWY 21' : 'RWY 03')
+                }], {
+                    xaxis: {
+                        gridcolor: '#e0e0e0',
+                        tickfont: { family: 'Roboto Condensed', color: '#666' }
+                    },
+                    yaxis: {
+                        tickvals: [0, 1],
+                        ticktext: ['RWY 03', 'RWY 21'],
+                        range: [-0.5, 1.5],
+                        gridcolor: '#e0e0e0',
+                        tickfont: { family: 'Roboto Condensed', color: '#666', size: 13 }
+                    },
+                    margin: { t: 10, l: 70, r: 80, b: 50 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#666', family: 'Roboto Condensed' }
+                }, { displayModeBar: false, responsive: true });
+
+            } catch (err) {
+                console.error('Timeline fetch error:', err);
+                el.className = 'pie-loading';
+                el.textContent = 'Failed to load';
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            if (typeof Plotly !== 'undefined') {
+                ['windDir7dChart','windDir365dChart','runway24hChart','runway7dChart','runway365dChart','runwayTimeline'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.data) Plotly.Plots.resize(el);
+                });
+            }
+        });
+
+        window.addEventListener('load', () => {
+            fetchStats();
+            fetchRunwayTimeline();
+        });
+    </script>
+</body>
+</html>

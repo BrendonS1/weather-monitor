@@ -357,6 +357,23 @@
             animation: skeleton-pulse 1.2s ease-in-out infinite;
             vertical-align: middle;
         }
+
+        .nav-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #007e33, #00b84d);
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 126, 51, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -581,6 +598,10 @@
                 <p>Information about this station including smart phone access is available <a href="http://weather.nsac.co.nz/NEmetinf.htm" target="_blank">here</a>.</p>
                 <p>Query the weather DB <a href="https://weather-monitor-frontend-5e76.onrender.com/query_page/query.html" target="_blank">here</a>.</p>
             </div>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 10px;">
+            <a href="stats.html" class="nav-btn">Historic statistics</a>
         </div>
 
         <div class="footer">
@@ -1128,7 +1149,7 @@
                     return `
                         <div class="card" style="padding: 0; overflow: hidden;">
                             <div class="card-title" style="padding: 20px 30px 10px;">${cam.CamName}</div>
-                            <img src="${loResUrl}?t=${Date.now()}"
+                            <img src="${loResUrl}"
                                  style="width: 100%; object-fit: cover; cursor: pointer; display: block;"
                                  onclick="window.open('${hiResUrl}', '_blank')"
                                  onerror="this.closest('.card').style.display='none';"

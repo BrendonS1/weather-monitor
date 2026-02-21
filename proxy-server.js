@@ -18,9 +18,17 @@ const ALLOWED_URLS = [
 // Cache configuration
 const cache = new Map();
 const CACHE_DURATION = 60000; // 60 seconds (matches NemetData update frequency)
+const MAX_CACHE_SIZE = 50;
 
 function getCacheKey(targetUrl) {
-    return targetUrl;
+    try {
+        const u = new URL(targetUrl);
+        u.searchParams.delete('t');
+        u.searchParams.delete('_');
+        return u.toString();
+    } catch {
+        return targetUrl;
+    }
 }
 
 function getCachedData(targetUrl) {
@@ -44,13 +52,18 @@ function getCachedData(targetUrl) {
 
 function setCachedData(targetUrl, data, isBinary, contentType) {
     const key = getCacheKey(targetUrl);
+    if (cache.size >= MAX_CACHE_SIZE && !cache.has(key)) {
+        const oldestKey = cache.keys().next().value;
+        cache.delete(oldestKey);
+        console.log(`Cache evicted (size limit): ${oldestKey}`);
+    }
     cache.set(key, {
         data: data,
         isBinary: isBinary,
         contentType: contentType,
         timestamp: Date.now()
     });
-    console.log(`Cache SET for ${targetUrl}`);
+    console.log(`Cache SET for ${key}`);
 }
 
 function isAllowedUrl(targetUrl) {
