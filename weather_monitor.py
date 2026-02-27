@@ -67,18 +67,6 @@ class WeatherMonitor:
             )
         ''')
         
-        # Archive table for old data
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS weather_data_archive (
-                id SERIAL PRIMARY KEY,
-                captured_at TIMESTAMP,
-                content_hash TEXT NOT NULL,
-                raw_content TEXT NOT NULL,
-                file_size INTEGER,
-                archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
         # Index for faster lookups
         cursor.execute('''
             CREATE INDEX IF NOT EXISTS idx_captured_at 
@@ -88,11 +76,6 @@ class WeatherMonitor:
         cursor.execute('''
             CREATE INDEX IF NOT EXISTS idx_content_hash 
             ON weather_data(content_hash)
-        ''')
-        
-        cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_archive_captured_at 
-            ON weather_data_archive(captured_at)
         ''')
         
         conn.commit()
@@ -173,72 +156,57 @@ class WeatherMonitor:
         result = cursor.fetchone()
         last_capture = result[0] if result else "Never"
         
-        cursor.execute('SELECT COUNT(*) FROM weather_data_archive')
-        archived_count = cursor.fetchone()[0]
-        
         conn.close()
-        
+
         return {
             'total_captures': total_captures,
             'last_capture': last_capture,
-            'archived_records': archived_count
         }
     
-    def archive_old_data(self, days=90):
-        """Archive data older than specified days"""
+    def cleanup_old_data(self):
+        """Delete raw/trend data older than 30 days; weather_update older than 2 years"""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
-        # Find records to archive
-        cursor.execute('''
-            SELECT id, captured_at, content_hash, raw_content, file_size
-            FROM weather_data
-            WHERE captured_at < NOW() - INTERVAL '%s days'
-        ''', (days,))
-        
-        records = cursor.fetchall()
-        
-        if not records:
-            logger.info(f"No records older than {days} days to archive")
-            conn.close()
-            return 0
-        
-        # Insert into archive
-        for record in records:
-            cursor.execute('''
-                INSERT INTO weather_data_archive (id, captured_at, content_hash, raw_content, file_size)
-                VALUES (%s, %s, %s, %s, %s)
-            ''', record)
-        
-        # Delete old trend data (references weather_data.id via update_id)
+
         cursor.execute('''
             DELETE FROM weather_windtrend
             WHERE update_id IN (
                 SELECT id FROM weather_data
-                WHERE captured_at < NOW() - INTERVAL '%s days'
+                WHERE captured_at < NOW() - INTERVAL '30 days'
             )
-        ''', (days,))
+        ''')
+        windtrend_count = cursor.rowcount
 
         cursor.execute('''
             DELETE FROM weather_winddirtrend
             WHERE update_id IN (
                 SELECT id FROM weather_data
-                WHERE captured_at < NOW() - INTERVAL '%s days'
+                WHERE captured_at < NOW() - INTERVAL '30 days'
             )
-        ''', (days,))
+        ''')
+        winddirtrend_count = cursor.rowcount
 
-        # Delete from main table
         cursor.execute('''
             DELETE FROM weather_data
-            WHERE captured_at < NOW() - INTERVAL '%s days'
-        ''', (days,))
-        
+            WHERE captured_at < NOW() - INTERVAL '30 days'
+        ''')
+        data_count = cursor.rowcount
+
+        cursor.execute('''
+            DELETE FROM weather_update
+            WHERE captured_at < NOW() - INTERVAL '2 years'
+        ''')
+        update_count = cursor.rowcount
+
         conn.commit()
-        archived_count = len(records)
         conn.close()
-        
-        logger.info(f"Archived {archived_count} records older than {days} days")
-        return archived_count
+
+        logger.info(
+            f"Cleanup: removed {data_count} weather_data, "
+            f"{windtrend_count} windtrend, {winddirtrend_count} winddirtrend rows (>30 days); "
+            f"{update_count} weather_update rows (>2 years)"
+        )
+        return data_count
     
     def run_once(self):
         """Run a single check"""
@@ -267,7 +235,7 @@ class WeatherMonitor:
         logger.info(f"Starting continuous monitoring (interval: {interval}s)")
         logger.info(f"Monitoring URL: {self.url}")
         logger.info(f"Database: PostgreSQL (Render)")
-        logger.info(f"Auto-archive: Data older than 90 days will be archived daily")
+        logger.info(f"Auto-cleanup: weather_data/trends >30 days, weather_update >2 years (runs daily)")
         
         # Track when we last ran archive
         last_archive_check = datetime.now()
@@ -278,13 +246,13 @@ class WeatherMonitor:
                 
                 # Check if we should run archive (once per day)
                 if (datetime.now() - last_archive_check).days >= 1:
-                    logger.info("Running daily archive check...")
-                    self.archive_old_data(days=90)
+                    logger.info("Running daily cleanup...")
+                    self.cleanup_old_data()
                     last_archive_check = datetime.now()
                 
                 # Show stats periodically
                 stats = self.get_stats()
-                logger.info(f"Stats - Active: {stats['total_captures']}, Archived: {stats['archived_records']}, Last: {stats['last_capture']}")
+                logger.info(f"Stats - Active: {stats['total_captures']}, Last: {stats['last_capture']}")
                 
                 logger.info(f"Waiting {interval} seconds until next check...")
                 time.sleep(interval)
@@ -317,10 +285,9 @@ def main():
         help='Show statistics and exit'
     )
     parser.add_argument(
-        '--archive', 
-        type=int,
-        metavar='DAYS',
-        help='Archive data older than DAYS and exit (default: 90)'
+        '--cleanup',
+        action='store_true',
+        help='Run cleanup (weather_data/trends >30 days, weather_update >2 years) and exit'
     )
     
     args = parser.parse_args()
@@ -332,14 +299,12 @@ def main():
         print(f"\n=== Weather Monitor Statistics ===")
         print(f"Database: PostgreSQL (Render)")
         print(f"Active records: {stats['total_captures']}")
-        print(f"Archived records: {stats['archived_records']}")
         print(f"Last capture: {stats['last_capture']}")
         print(f"===================================\n")
-    elif args.archive:
-        days = args.archive if args.archive else 90
-        print(f"\nArchiving data older than {days} days...")
-        archived = monitor.archive_old_data(days)
-        print(f"Archived {archived} records\n")
+    elif args.cleanup:
+        print(f"\nRunning cleanup...")
+        monitor.cleanup_old_data()
+        print(f"Cleanup complete\n")
     elif args.once:
         monitor.run_once()
     else:
