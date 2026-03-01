@@ -41,6 +41,13 @@
     gap: 0;
   }
 
+  .tracker.sidebar-hidden {
+    grid-template-columns: 1fr;
+  }
+  .tracker.sidebar-hidden .sidebar {
+    display: none;
+  }
+
   /* HEADER */
   header {
     grid-column: 1 / -1;
@@ -365,10 +372,16 @@
 </head>
 <body>
 
-<div class="tracker">
+<div class="tracker sidebar-hidden">
   <header>
     <div class="logo">NZNE // <span>North Shore</span> ADS-B</div>
     <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <button id="sidebar-toggle" onclick="toggleSidebar()" style="
+      background:rgba(0,212,255,0.1);border:1px solid var(--border);
+      color:var(--text-dim);font-family:var(--font-mono);font-size:10px;
+      letter-spacing:1px;padding:4px 10px;cursor:pointer;border-radius:2px;
+      transition:color 0.15s,background 0.15s;
+    ">☰ TRAFFIC</button>
     <div class="header-stats">
       <div class="stat-item">
         <span class="stat-label">AIRCRAFT</span>
@@ -696,6 +709,15 @@ async function loadNZAirspace() {
 
   // If all network sources fail, show a subtle notice
   console.warn('NZ airspace could not be loaded — you may need to host nz_asp.geojson locally.');
+}
+
+function toggleSidebar() {
+  const tracker = document.querySelector('.tracker');
+  const btn = document.getElementById('sidebar-toggle');
+  const nowHidden = tracker.classList.toggle('sidebar-hidden');
+  btn.style.color = nowHidden ? 'var(--text-dim)' : 'var(--accent)';
+  btn.style.background = nowHidden ? 'rgba(0,212,255,0.1)' : 'rgba(0,212,255,0.2)';
+  map.invalidateSize();
 }
 
 function toggleAirspace() {

@@ -50,7 +50,7 @@ map.whenReady(() => {
   const size = map.getSize();
   const nznePx = map.project([LAT, LON], map.getZoom());
   // Target: NZNE at 75% from top (25% from bottom); currently at 50% (center)
-  const dy = size.y * 0.40; // NZNE at 90% from top (10% from bottom)
+  const dy = size.y * (window.innerWidth > 768 ? 0.35 : 0.40); // desktop: 85% from top, mobile: 90%
   const newCenter = map.unproject([nznePx.x, nznePx.y - dy], map.getZoom());
   map.setView(newCenter, map.getZoom(), { animate: false });
 });
@@ -194,6 +194,31 @@ function normalizeAspName(name) {
   return String(name || '').toUpperCase().replace(/\s+/g, '');
 }
 
+function getAirspaceStyle(props) {
+  const cls = props.icaoClass;
+  const type = props.type;
+  const name = String(props.name || '').toUpperCase();
+  if (cls === 5 || name.startsWith('NZG') || name.includes('NZG') || name.includes('NZT')) {
+    return { color: '#4488ff', weight: 1.2, opacity: 0.7, fillColor: '#4488ff', fillOpacity: 0.06 };
+  }
+  if (cls === 8) {
+    return { color: '#ff2222', weight: 1.5, opacity: 0.85, fillColor: '#ff2222', fillOpacity: 0.1, dashArray: '5 3' };
+  }
+  if (cls === 1) {
+    return { color: '#00aaff', weight: 1.5, opacity: 0.85, fillColor: '#00aaff', fillOpacity: 0.06 };
+  }
+  if (type === 4 || name.includes(' CTR')) {
+    return { color: '#cc44ff', weight: 1.5, opacity: 0.85, fillColor: '#cc44ff', fillOpacity: 0.1 };
+  }
+  if (cls === 2 || cls === 3) {
+    return { color: '#cc44ff', weight: 1.2, opacity: 0.75, fillOpacity: 0 };
+  }
+  if (cls === 0) {
+    return { color: '#00aaff', weight: 2, opacity: 0.85, fillColor: '#00aaff', fillOpacity: 0.07, dashArray: '1 7', lineCap: 'round' };
+  }
+  return { color: '#00aaff', weight: 1.5, opacity: 0.75, fillColor: '#00aaff', fillOpacity: 0.06 };
+}
+
 async function loadAirspace() {
   try {
     const gcsUrl = 'https://storage.googleapis.com/29f98e10-a489-4c82-ae5e-489dbcd4912f/nz_asp.geojson';
@@ -205,7 +230,7 @@ async function loadAirspace() {
         for (const a of ALLOWED_ASP) { if (n.includes(a)) return true; }
         return false;
       },
-      style: () => ({ color: '#00aaff', weight: 1.5, opacity: 0.75, fillColor: '#00aaff', fillOpacity: 0.06 }),
+      style: f => getAirspaceStyle(f.properties),
       interactive: false,
     }).addTo(map).bringToBack();
   } catch (e) {
