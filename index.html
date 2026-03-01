@@ -617,6 +617,32 @@
 
         let metData = null;
         let updateTimer = null;
+        let pressureHistory = null;
+        let currentPressure = null;
+
+        function updatePressureTrend() {
+            if (!pressureHistory || currentPressure === null) return;
+            const now = new Date();
+            // Average of readings from 2.5–3.5 hours ago
+            const readings = pressureHistory.timestamps
+                .map((ts, i) => ({ minsAgo: (now - new Date(ts)) / 60000, val: pressureHistory.sea_press_hpa[i] }))
+                .filter(r => r.minsAgo >= 150 && r.minsAgo <= 210);
+            if (!readings.length) return;
+            const avg3h = readings.reduce((s, r) => s + r.val, 0) / readings.length;
+            const diff = currentPressure - avg3h;
+            const pressCard = document.querySelectorAll('.card')[1];
+            const badge = pressCard.querySelector('.badge');
+            if (diff > 0.5) {
+                badge.className = 'badge trend-up';
+                badge.textContent = '↑ Rising';
+            } else if (diff < -0.5) {
+                badge.className = 'badge trend-down';
+                badge.textContent = '↓ Falling';
+            } else {
+                badge.className = 'badge';
+                badge.textContent = '→ Steady';
+            }
+        }
 
         // ========== CLIENT-SIDE CACHE ==========
         const CACHE_KEY = 'nzne_weather_cache';
@@ -882,6 +908,8 @@
             pressCard.querySelector('.card-value').innerHTML =
                 (stale ? '####' : Math.round(data.thb0seapress)) + '<span class="card-unit">hPa</span>';
 
+            if (!stale) { currentPressure = parseFloat(data.thb0seapress); updatePressureTrend(); }
+
             const pressDetails = pressCard.querySelectorAll('.card-detail-value');
             pressDetails[0].textContent = (stale ? '####' : Math.round(data.thb0seapress)) + ' hPa';
             pressDetails[1].textContent = (stale ? '####' : Math.round(data.thb0press)) + ' hPa';
@@ -1085,6 +1113,8 @@
                 const response = await fetch(PRESSURE_API_URL + '?_=' + Date.now());
                 if (!response.ok) throw new Error(`Pressure API fetch failed: ${response.status} ${response.statusText}`);
                 const history = await response.json();
+                pressureHistory = history;
+                updatePressureTrend();
 
                 if (typeof Plotly !== 'undefined' && history.timestamps.length > 0) {
                     const now = new Date();
@@ -1160,8 +1190,17 @@
                                 <img src="https://www.metservice.com/publicData/rainRadar/image/Auckland/120K/"
                                      style="width: 115%; left: -7.5%; position: absolute; display: block; cursor: pointer; opacity: 0;"
                                      onclick="window.open('https://www.metservice.com/maps-radar/rain/radar/auckland?range=120&tab=real-time', '_blank')"
-                                     onload="(function(img){function apply(){var camImg=document.querySelector('#cameraSection img');var camH=camImg&&camImg.clientHeight>0?camImg.clientHeight:img.clientWidth;var h=img.clientWidth/img.naturalWidth*img.naturalHeight;img.parentElement.style.height=camH+'px';img.style.top=-(h*0.9-camH)+'px';img.style.opacity='1';}var camImg=document.querySelector('#cameraSection img');if(camImg&&camImg.complete&&camImg.clientHeight>0){apply();}else if(camImg){camImg.addEventListener('load',apply);}else{apply();}})(this);"
+                                     onload="(function(img){function apply(){var camImg=document.querySelector('#cameraSection img');var camH=camImg&&camImg.clientHeight>0?camImg.clientHeight:img.clientWidth;var h=img.clientWidth/img.naturalWidth*img.naturalHeight;img.parentElement.style.height=camH+'px';img.style.top=-(h*0.9-camH)+'px';img.style.opacity='1';var f=document.getElementById('adsb-frame');if(f)f.style.height=camH+'px';}var camImg=document.querySelector('#cameraSection img');if(camImg&&camImg.complete&&camImg.clientHeight>0){apply();}else if(camImg){camImg.addEventListener('load',apply);}else{apply();}})(this);"
                                      alt="Auckland Radar">
+                            </div>
+                        </div>
+                        <div class="card" style="padding: 0; overflow: hidden; cursor: pointer;" onclick="window.open('/adsb_page/adsb_map.html', '_blank')">
+                            <div class="card-title" style="padding: 20px 30px 10px;">ADS-B Traffic</div>
+                            <div style="position: relative;">
+                                <iframe id="adsb-frame" src="/adsb_page/adsb_embed.html"
+                                        style="width: 100%; height: 250px; border: none; display: block; pointer-events: none;"
+                                        scrolling="no"></iframe>
+                                <div style="position: absolute; inset: 0;"></div>
                             </div>
                         </div>
                 `;
