@@ -617,6 +617,32 @@
 
         let metData = null;
         let updateTimer = null;
+        let pressureHistory = null;
+        let currentPressure = null;
+
+        function updatePressureTrend() {
+            if (!pressureHistory || currentPressure === null) return;
+            const now = new Date();
+            // Average of readings from 2.5–3.5 hours ago
+            const readings = pressureHistory.timestamps
+                .map((ts, i) => ({ minsAgo: (now - new Date(ts)) / 60000, val: pressureHistory.sea_press_hpa[i] }))
+                .filter(r => r.minsAgo >= 150 && r.minsAgo <= 210);
+            if (!readings.length) return;
+            const avg3h = readings.reduce((s, r) => s + r.val, 0) / readings.length;
+            const diff = currentPressure - avg3h;
+            const pressCard = document.querySelectorAll('.card')[1];
+            const badge = pressCard.querySelector('.badge');
+            if (diff > 0.5) {
+                badge.className = 'badge trend-up';
+                badge.textContent = '↑ Rising';
+            } else if (diff < -0.5) {
+                badge.className = 'badge trend-down';
+                badge.textContent = '↓ Falling';
+            } else {
+                badge.className = 'badge';
+                badge.textContent = '→ Steady';
+            }
+        }
 
         // ========== CLIENT-SIDE CACHE ==========
         const CACHE_KEY = 'nzne_weather_cache';
@@ -882,6 +908,8 @@
             pressCard.querySelector('.card-value').innerHTML =
                 (stale ? '####' : Math.round(data.thb0seapress)) + '<span class="card-unit">hPa</span>';
 
+            if (!stale) { currentPressure = parseFloat(data.thb0seapress); updatePressureTrend(); }
+
             const pressDetails = pressCard.querySelectorAll('.card-detail-value');
             pressDetails[0].textContent = (stale ? '####' : Math.round(data.thb0seapress)) + ' hPa';
             pressDetails[1].textContent = (stale ? '####' : Math.round(data.thb0press)) + ' hPa';
@@ -1085,6 +1113,8 @@
                 const response = await fetch(PRESSURE_API_URL + '?_=' + Date.now());
                 if (!response.ok) throw new Error(`Pressure API fetch failed: ${response.status} ${response.statusText}`);
                 const history = await response.json();
+                pressureHistory = history;
+                updatePressureTrend();
 
                 if (typeof Plotly !== 'undefined' && history.timestamps.length > 0) {
                     const now = new Date();
