@@ -1156,7 +1156,14 @@
                                  alt="${cam.CamName}">
                         </div>
                     `;
-                }).join('');
+                }).join('') + `
+                        <div class="card" style="padding: 0; overflow: hidden;">
+                            <div class="card-title" style="padding: 20px 30px 10px;">Auckland Radar</div>
+                            <img src="https://www.metservice.com/publicData/rainRadar/image/Auckland/120K/"
+                                 style="width: 100%; object-fit: cover; display: block;"
+                                 alt="Auckland Radar">
+                        </div>
+                `;
                 section.style.display = 'contents';
             }
 
