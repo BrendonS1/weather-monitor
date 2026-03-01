@@ -97,6 +97,47 @@ const server = http.createServer((req, res) => {
 
     // Parse the target URL from query parameter
     const parsedUrl = url.parse(req.url, true);
+
+    // ── ADS-B Exchange proxy ────────────────────────────────────────────────
+    if (parsedUrl.pathname === '/api/adsb') {
+        const apiKey = process.env.ADSB_API_KEY;
+        if (!apiKey) {
+            res.writeHead(503, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: 'ADSB_API_KEY not configured on server' }));
+            return;
+        }
+        const { lat, lon, dist } = parsedUrl.query;
+        if (!lat || !lon || !dist) {
+            res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: 'Missing lat, lon or dist query params' }));
+            return;
+        }
+        const adsbUrl = `https://adsbexchange-com1.p.rapidapi.com/v2/lat/${lat}/lon/${lon}/dist/${dist}/`;
+        console.log(`ADS-B proxy request: ${adsbUrl}`);
+        https.get(adsbUrl, {
+            headers: {
+                'x-rapidapi-host': 'adsbexchange-com1.p.rapidapi.com',
+                'x-rapidapi-key': apiKey,
+            }
+        }, (proxyRes) => {
+            let data = '';
+            proxyRes.on('data', chunk => { data += chunk; });
+            proxyRes.on('end', () => {
+                res.writeHead(proxyRes.statusCode, {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                });
+                res.end(data);
+            });
+        }).on('error', (err) => {
+            console.error('ADS-B proxy error:', err);
+            res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: err.message }));
+        });
+        return;
+    }
+    // ───────────────────────────────────────────────────────────────────────
+
     const targetUrl = parsedUrl.query.url;
 
     if (!targetUrl) {
