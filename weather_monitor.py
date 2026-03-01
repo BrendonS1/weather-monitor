@@ -164,7 +164,7 @@ class WeatherMonitor:
         }
     
     def cleanup_old_data(self):
-        """Delete raw/trend data older than 30 days; weather_update older than 2 years"""
+        """Delete trend data older than 5 days, raw data older than 30 days, weather_update older than 2 years"""
         conn = self.get_connection()
         cursor = conn.cursor()
 
@@ -172,7 +172,7 @@ class WeatherMonitor:
             DELETE FROM weather_windtrend
             WHERE update_id IN (
                 SELECT id FROM weather_data
-                WHERE captured_at < NOW() - INTERVAL '30 days'
+                WHERE captured_at < NOW() - INTERVAL '5 days'
             )
         ''')
         windtrend_count = cursor.rowcount
@@ -181,7 +181,7 @@ class WeatherMonitor:
             DELETE FROM weather_winddirtrend
             WHERE update_id IN (
                 SELECT id FROM weather_data
-                WHERE captured_at < NOW() - INTERVAL '30 days'
+                WHERE captured_at < NOW() - INTERVAL '5 days'
             )
         ''')
         winddirtrend_count = cursor.rowcount
@@ -202,8 +202,8 @@ class WeatherMonitor:
         conn.close()
 
         logger.info(
-            f"Cleanup: removed {data_count} weather_data, "
-            f"{windtrend_count} windtrend, {winddirtrend_count} winddirtrend rows (>30 days); "
+            f"Cleanup: removed {windtrend_count} windtrend, {winddirtrend_count} winddirtrend rows (>5 days); "
+            f"{data_count} weather_data rows (>30 days); "
             f"{update_count} weather_update rows (>2 years)"
         )
         return data_count
@@ -235,7 +235,7 @@ class WeatherMonitor:
         logger.info(f"Starting continuous monitoring (interval: {interval}s)")
         logger.info(f"Monitoring URL: {self.url}")
         logger.info(f"Database: PostgreSQL (Render)")
-        logger.info(f"Auto-cleanup: weather_data/trends >30 days, weather_update >2 years (runs daily)")
+        logger.info(f"Auto-cleanup: trends >5 days, weather_data >30 days, weather_update >2 years (runs daily)")
         
         # Track when we last ran archive
         last_archive_check = datetime.now()
@@ -287,7 +287,7 @@ def main():
     parser.add_argument(
         '--cleanup',
         action='store_true',
-        help='Run cleanup (weather_data/trends >30 days, weather_update >2 years) and exit'
+        help='Run cleanup (trends >5 days, weather_data >30 days, weather_update >2 years) and exit'
     )
     
     args = parser.parse_args()

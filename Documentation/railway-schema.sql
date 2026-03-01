@@ -286,15 +286,6 @@ BEGIN
     FROM jsonb_array_elements_text(NEW.raw_content->'winddirtrend') WITH ORDINALITY AS t(value, ordinality);
   END IF;
 
-  -- Purge trend data older than 5 days
-  DELETE FROM public.weather_windtrend
-  WHERE update_id IN (
-    SELECT id FROM public.weather_data WHERE captured_at < NOW() - INTERVAL '5 days'
-  );
-  DELETE FROM public.weather_winddirtrend
-  WHERE update_id IN (
-    SELECT id FROM public.weather_data WHERE captured_at < NOW() - INTERVAL '5 days'
-  );
 
   RETURN NEW;
 END;
