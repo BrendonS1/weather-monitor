@@ -895,8 +895,25 @@ function renderDetail(ac) {
     </div>`;
 }
 
+// ── QNH FROM WEATHER STATION ───────────────
+async function fetchQNH() {
+  try {
+    const url = `${CONFIG.proxyBase}/?url=${encodeURIComponent('http://weather.nsac.co.nz/NEmetData.txt')}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const qnh = Math.round(data.thb0seapress);
+    if (qnh >= 900 && qnh <= 1100) {
+      document.getElementById('qnh-input').value = qnh;
+      onQNHChange();
+    }
+  } catch (e) {
+    console.warn('QNH fetch failed, using default:', e.message);
+  }
+}
+
 // ── INIT ───────────────────────────────────
 loadNZAirspace();
+fetchQNH();
 fetchFlights();
 refreshTimer = setInterval(fetchFlights, CONFIG.refreshSec * 1000);
 </script>
