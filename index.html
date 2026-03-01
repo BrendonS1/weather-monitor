@@ -1164,12 +1164,15 @@
                                      alt="Auckland Radar">
                             </div>
                         </div>
-                        <div class="card" style="padding: 0; overflow: hidden;">
+                        <div class="card" style="padding: 0; overflow: hidden; cursor: pointer;" onclick="window.open('/adsb_page/adsb_map.html', '_blank')">
                             <div class="card-title" style="padding: 20px 30px 10px;">ADS-B Traffic</div>
-                            <iframe src="/adsb_page/adsb_embed.html"
-                                    style="width: 100%; border: none; display: block;"
-                                    onload="(function(f){var camImg=document.querySelector('#cameraSection img');var h=camImg&&camImg.clientHeight>0?camImg.clientHeight:250;f.style.height=h+'px';})(this);"
-                                    scrolling="no"></iframe>
+                            <div style="position: relative;">
+                                <iframe src="/adsb_page/adsb_embed.html"
+                                        style="width: 100%; border: none; display: block; pointer-events: none;"
+                                        onload="(function(f){var camImg=document.querySelector('#cameraSection img');var h=camImg&&camImg.clientHeight>0?camImg.clientHeight:250;f.style.height=h+'px';})(this);"
+                                        scrolling="no"></iframe>
+                                <div style="position: absolute; inset: 0;"></div>
+                            </div>
                         </div>
                 `;
                 section.style.display = 'contents';
