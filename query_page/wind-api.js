@@ -33,7 +33,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && pathname === '/api/wind-history') {
         try {
             const result = await pool.query(
-                `SELECT device_utc_ts, wind_avg, wind_xwind
+                `SELECT device_utc_ts, wind_avg, wind_max_10, wind_xwind
                  FROM weather_update
                  WHERE device_utc_ts >= NOW() - INTERVAL '60 minutes'
                  ORDER BY device_utc_ts ASC`
@@ -41,10 +41,11 @@ const server = http.createServer(async (req, res) => {
 
             const timestamps = result.rows.map(r => r.device_utc_ts);
             const wind_avg = result.rows.map(r => parseFloat(r.wind_avg));
+            const wind_gust = result.rows.map(r => parseFloat(r.wind_max_10));
             const wind_xwind = result.rows.map(r => parseFloat(r.wind_xwind));
 
             res.writeHead(200, headers);
-            res.end(JSON.stringify({ timestamps, wind_avg, wind_xwind }));
+            res.end(JSON.stringify({ timestamps, wind_avg, wind_gust, wind_xwind }));
         } catch (err) {
             console.error('Wind history query error:', err.message);
             res.writeHead(500, headers);

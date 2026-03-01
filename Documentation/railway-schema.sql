@@ -286,6 +286,7 @@ BEGIN
     FROM jsonb_array_elements_text(NEW.raw_content->'winddirtrend') WITH ORDINALITY AS t(value, ordinality);
   END IF;
 
+
   RETURN NEW;
 END;
 $function$;

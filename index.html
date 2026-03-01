@@ -422,20 +422,12 @@
                 </div>
                 <div class="card-detail">
                     <div class="card-detail-row">
-                        <span class="card-detail-label">Current</span>
-                        <span class="card-detail-value" id="windCurrent"> kts</span>
-                    </div>
-                    <div class="card-detail-row">
                         <span class="card-detail-label">Average</span>
                         <span class="card-detail-value" id="windAvg"> kts</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Gust (10 min)</span>
                         <span class="card-detail-value" id="windGust10"> kts</span>
-                    </div>
-                    <div class="card-detail-row">
-                        <span class="card-detail-label">Max (60 min)</span>
-                        <span class="card-detail-value" id="windMax60"> kts</span>
                     </div>
                     <div class="card-detail-row">
                         <span class="card-detail-label">Variable</span>
@@ -596,7 +588,7 @@
                 <p>More comprehensive information about operating at North Shore Airport is available at <a href="http://www.northshoreairport.co.nz/arriving-by-aircraft/" target="_blank">northshoreairport.co.nz</a>.</p>
                 <p><strong>Tip:</strong> Add this page to your mobile phone home page for easy access.</p>
                 <p>Information about this station including smart phone access is available <a href="http://weather.nsac.co.nz/NEmetinf.htm" target="_blank">here</a>.</p>
-                <p>Query the weather DB <a href="https://weather-monitor-frontend-5e76.onrender.com/query_page/query.html" target="_blank">here</a>.</p>
+                <p>Query the weather DB <a href="https://serve-frontend-production.up.railway.app/query_page/query.html" target="_blank">here</a>.</p>
             </div>
         </div>
 
@@ -672,7 +664,7 @@
             document.querySelector('.timestamp').innerHTML = skl('210px', '13px');
             // Wind
             document.querySelector('.wind-direction').innerHTML = skl('130px', '38px');
-            ['windCurrent', 'windAvg', 'windGust10', 'windMax60', 'windVar', 'windCrosswind'].forEach(id => {
+            ['windAvg', 'windGust10', 'windVar', 'windCrosswind'].forEach(id => {
                 document.getElementById(id).innerHTML = skl('60px', '15px');
             });
             // Pressure card
@@ -818,10 +810,8 @@
                 windStr += ' kts';
                 document.querySelector('.wind-direction').textContent = windStr;
             }
-            document.getElementById('windCurrent').textContent = (stale ? '##' : Math.round(data.wind0wind)) + ' kts';
             document.getElementById('windAvg').textContent = (stale ? '##' : Math.round(data.wind0avgwind)) + ' kts';
             document.getElementById('windGust10').textContent = (stale ? '##' : Math.round(data.wind0windmax10)) + ' kts';
-            document.getElementById('windMax60').textContent = (stale ? '##' : Math.round(data.wind0windmax60)) + ' kts';
             document.getElementById('windVar').textContent = stale ? '##' : directionRange(windDirTrend, 10);
 
             // Crosswind component
@@ -1060,6 +1050,13 @@
                         fill: 'tozeroy',
                         fillcolor: 'rgba(0, 126, 51, 0.1)'
                     };
+                    const windGustTrace = {
+                        x: minutesAgo,
+                        y: history.wind_gust,
+                        name: 'Gust',
+                        mode: 'lines',
+                        line: { color: '#007e33', width: 2, dash: 'dot' }
+                    };
                     const xwindTrace = {
                         x: minutesAgo,
                         y: history.wind_xwind,
@@ -1067,7 +1064,7 @@
                         mode: 'lines',
                         marker: { color: '#F44336', width: 1 }
                     };
-                    Plotly.newPlot('windChart', [windAvgTrace, xwindTrace], {
+                    Plotly.newPlot('windChart', [windAvgTrace, windGustTrace, xwindTrace], {
                         xaxis: { title: 'Minutes ago', range: [Math.max(...minutesAgo), 0], gridcolor: '#e0e0e0' },
                         yaxis: { title: 'Strength (kts)', rangemode: 'tozero', gridcolor: '#e0e0e0' },
                         margin: { t: 10, l: 50, r: 20, b: 40 },
@@ -1156,7 +1153,18 @@
                                  alt="${cam.CamName}">
                         </div>
                     `;
-                }).join('');
+                }).join('') + `
+                        <div class="card" style="padding: 0; overflow: hidden;">
+                            <div class="card-title" style="padding: 20px 30px 10px;">Auckland Radar</div>
+                            <div style="overflow: hidden; position: relative;">
+                                <img src="https://www.metservice.com/publicData/rainRadar/image/Auckland/120K/"
+                                     style="width: 115%; left: -7.5%; position: absolute; display: block; cursor: pointer; opacity: 0;"
+                                     onclick="window.open('https://www.metservice.com/maps-radar/rain/radar/auckland?range=120&tab=real-time', '_blank')"
+                                     onload="(function(img){function apply(){var camImg=document.querySelector('#cameraSection img');var camH=camImg&&camImg.clientHeight>0?camImg.clientHeight:img.clientWidth;var h=img.clientWidth/img.naturalWidth*img.naturalHeight;img.parentElement.style.height=camH+'px';img.style.top=-(h*0.9-camH)+'px';img.style.opacity='1';}var camImg=document.querySelector('#cameraSection img');if(camImg&&camImg.complete&&camImg.clientHeight>0){apply();}else if(camImg){camImg.addEventListener('load',apply);}else{apply();}})(this);"
+                                     alt="Auckland Radar">
+                            </div>
+                        </div>
+                `;
                 section.style.display = 'contents';
             }
 
