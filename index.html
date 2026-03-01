@@ -1050,6 +1050,13 @@
                         fill: 'tozeroy',
                         fillcolor: 'rgba(0, 126, 51, 0.1)'
                     };
+                    const windGustTrace = {
+                        x: minutesAgo,
+                        y: history.wind_gust,
+                        name: 'Gust',
+                        mode: 'lines',
+                        line: { color: '#007e33', width: 2, dash: 'dot' }
+                    };
                     const xwindTrace = {
                         x: minutesAgo,
                         y: history.wind_xwind,
@@ -1057,7 +1064,7 @@
                         mode: 'lines',
                         marker: { color: '#F44336', width: 1 }
                     };
-                    Plotly.newPlot('windChart', [windAvgTrace, xwindTrace], {
+                    Plotly.newPlot('windChart', [windAvgTrace, windGustTrace, xwindTrace], {
                         xaxis: { title: 'Minutes ago', range: [Math.max(...minutesAgo), 0], gridcolor: '#e0e0e0' },
                         yaxis: { title: 'Strength (kts)', rangemode: 'tozero', gridcolor: '#e0e0e0' },
                         margin: { t: 10, l: 50, r: 20, b: 40 },
@@ -1151,9 +1158,9 @@
                             <div class="card-title" style="padding: 20px 30px 10px;">Auckland Radar</div>
                             <div style="overflow: hidden; position: relative;">
                                 <img src="https://www.metservice.com/publicData/rainRadar/image/Auckland/120K/"
-                                     style="width: 100%; position: absolute; display: block; cursor: pointer;"
+                                     style="width: 115%; left: -7.5%; position: absolute; display: block; cursor: pointer; opacity: 0;"
                                      onclick="window.open('https://www.metservice.com/maps-radar/rain/radar/auckland?range=120&tab=real-time', '_blank')"
-                                     onload="(function(img){requestAnimationFrame(function(){var camImg=document.querySelector('#cameraSection img');var camH=camImg&&camImg.clientHeight>0?camImg.clientHeight:img.clientWidth;var h=img.clientWidth/img.naturalWidth*img.naturalHeight;img.parentElement.style.height=camH+'px';img.style.top=-(h*0.9-camH)+'px';});})(this);"
+                                     onload="(function(img){function apply(){var camImg=document.querySelector('#cameraSection img');var camH=camImg&&camImg.clientHeight>0?camImg.clientHeight:img.clientWidth;var h=img.clientWidth/img.naturalWidth*img.naturalHeight;img.parentElement.style.height=camH+'px';img.style.top=-(h*0.9-camH)+'px';img.style.opacity='1';}var camImg=document.querySelector('#cameraSection img');if(camImg&&camImg.complete&&camImg.clientHeight>0){apply();}else if(camImg){camImg.addEventListener('load',apply);}else{apply();}})(this);"
                                      alt="Auckland Radar">
                             </div>
                         </div>
