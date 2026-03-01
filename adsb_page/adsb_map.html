@@ -715,12 +715,20 @@ function toggleAirspace() {
 // ── STATE ──────────────────────────────────
 let markers = {};
 let labelMarkers = {};
-let trailPolylines = {};       // hex → Leaflet Polyline
-let positionHistory = {};      // hex → [{lat, lon, ts}]
+let vectorLines = {};          // hex → Leaflet Polyline (speed vector)
 let selectedHex = null;
 let aircraftData = [];
 let refreshTimer = null;
-const TRAIL_DURATION_MS = 60 * 1000;  // 1 minute of trail history
+
+// Returns the endpoint of a speed vector: 2-minute lookahead at current ground speed
+function speedVectorEndpoint(lat, lon, trackDeg, speedKt) {
+  const distNM = speedKt * (2 / 60);           // NM travelled in 2 min
+  const distKm = distNM * 1.852;
+  const trackRad = trackDeg * Math.PI / 180;
+  const dlat = (distKm / 111.32) * Math.cos(trackRad);
+  const dlon = (distKm / (111.32 * Math.cos(lat * Math.PI / 180))) * Math.sin(trackRad);
+  return [lat + dlat, lon + dlon];
+}
 
 // ── DEMO DATA (used when no API key provided) ─────────
 function generateDemoData() {
@@ -778,43 +786,29 @@ function renderFlights(aircraft) {
     if (!currentHexes.has(hex)) {
       markers[hex].remove(); delete markers[hex];
       if (labelMarkers[hex]) { labelMarkers[hex].remove(); delete labelMarkers[hex]; }
-      if (trailPolylines[hex]) { trailPolylines[hex].remove(); delete trailPolylines[hex]; }
-      delete positionHistory[hex];
+      if (vectorLines[hex]) { vectorLines[hex].remove(); delete vectorLines[hex]; }
     }
   }
-
-  const now = Date.now();
 
   aircraft.forEach(ac => {
     if (!ac.lat || !ac.lon) return;
     const isSelected = ac.hex === selectedHex;
 
-    // ── Record position history ──
-    if (!positionHistory[ac.hex]) positionHistory[ac.hex] = [];
-    const hist = positionHistory[ac.hex];
-    // Only append if position actually changed (avoid duplicates on same poll)
-    const last = hist[hist.length - 1];
-    if (!last || last.lat !== ac.lat || last.lon !== ac.lon) {
-      hist.push({ lat: ac.lat, lon: ac.lon, ts: now });
-    }
-    // Prune points older than trail duration
-    const cutoff = now - TRAIL_DURATION_MS;
-    while (hist.length > 1 && hist[0].ts < cutoff) hist.shift();
-
-    // ── Draw / update trail polyline ──
-    const trailColor = isSelected ? '#ffffff' : '#39ff14';
-    const trailPoints = hist.map(p => [p.lat, p.lon]);
-    if (trailPolylines[ac.hex]) {
-      trailPolylines[ac.hex].setLatLngs(trailPoints);
-      trailPolylines[ac.hex].setStyle({ color: trailColor });
-    } else {
-      trailPolylines[ac.hex] = L.polyline(trailPoints, {
-        color: trailColor,
-        weight: 1.5,
-        opacity: 0.5,
-        interactive: false,
-        dashArray: null,
-      }).addTo(map);
+    // ── Draw / update speed vector ──
+    if (ac.track != null && ac.gs) {
+      const tip = speedVectorEndpoint(ac.lat, ac.lon, ac.track, ac.gs);
+      const vectorColor = isSelected ? '#ffaa00' : '#ff6600';
+      if (vectorLines[ac.hex]) {
+        vectorLines[ac.hex].setLatLngs([[ac.lat, ac.lon], tip]);
+        vectorLines[ac.hex].setStyle({ color: vectorColor });
+      } else {
+        vectorLines[ac.hex] = L.polyline([[ac.lat, ac.lon], tip], {
+          color: vectorColor,
+          weight: 1.5,
+          opacity: 0.8,
+          interactive: false,
+        }).addTo(map);
+      }
     }
 
     // ── Aircraft marker + label ──
@@ -846,14 +840,14 @@ function selectAircraft(hex) {
   const ac = aircraftData.find(a => a.hex === hex);
   if (!ac) return;
 
-  // Re-render icons + trail colours
+  // Re-render icons + vector colours
   aircraftData.forEach(a => {
     const sel = a.hex === hex;
     if (markers[a.hex]) markers[a.hex].setIcon(planeIcon(a.track, sel));
     if (labelMarkers[a.hex]) labelMarkers[a.hex].setIcon(planeLabelIcon(a.flight, a.alt_baro));
-    if (trailPolylines[a.hex]) trailPolylines[a.hex].setStyle({
-      color: sel ? '#ffffff' : '#39ff14',
-      opacity: sel ? 0.75 : 0.5,
+    if (vectorLines[a.hex]) vectorLines[a.hex].setStyle({
+      color: sel ? '#ffaa00' : '#ff6600',
+      opacity: sel ? 1 : 0.8,
       weight: sel ? 2 : 1.5,
     });
   });
