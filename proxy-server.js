@@ -12,7 +12,8 @@ const ALLOWED_URLS = [
     'http://weather.nsac.co.nz/NEmetData.txt',
     'http://weather.nsac.co.nz/awibexport.txt',
     'http://weather.nsac.co.nz/cams/CamInfo.txt',
-    'http://weather.nsac.co.nz/cams/'  // Allow all camera images
+    'http://weather.nsac.co.nz/cams/',  // Allow all camera images
+    'https://storage.googleapis.com/29f98e10-a489-4c82-ae5e-489dbcd4912f/nz_asp.geojson',
 ];
 
 // Cache configuration

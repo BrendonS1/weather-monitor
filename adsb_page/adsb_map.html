@@ -662,10 +662,9 @@ function buildAirspaceTooltip(props) {
 
 async function loadNZAirspace() {
   // OpenAIP public GCS bucket – NZ airspace GeoJSON (no API key needed)
+  const gcsUrl = 'https://storage.googleapis.com/29f98e10-a489-4c82-ae5e-489dbcd4912f/nz_asp.geojson';
   const urls = [
-    './nz_asp.geojson',  // local file — download from OpenAIP GCS bucket (see README)
-    'https://storage.googleapis.com/29f98e10-a489-4c82-ae5e-489dbcd4912f/nz_asp.geojson',
-    'https://cdn.jsdelivr.net/gh/nicb1/nzairspace@main/nz_airspace.geojson',
+    `${CONFIG.proxyBase}/?url=${encodeURIComponent(gcsUrl)}`,
   ];
 
   for (const url of urls) {
