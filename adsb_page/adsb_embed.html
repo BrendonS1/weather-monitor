@@ -50,7 +50,7 @@ map.whenReady(() => {
   const size = map.getSize();
   const nznePx = map.project([LAT, LON], map.getZoom());
   // Target: NZNE at 75% from top (25% from bottom); currently at 50% (center)
-  const dy = size.y * 0.25; // move center northward by 25% of height
+  const dy = size.y * 0.40; // NZNE at 90% from top (10% from bottom)
   const newCenter = map.unproject([nznePx.x, nznePx.y - dy], map.getZoom());
   map.setView(newCenter, map.getZoom(), { animate: false });
 });
@@ -78,9 +78,9 @@ function planeIcon(track) {
   return L.divIcon({
     className: 'plane-label',
     html: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-      style="transform:rotate(${track || 0}deg); filter:drop-shadow(0 0 3px #00d4ff88)">
-      <path d="M12 2L8 10H3L5 14H9L7 22H12H17L15 14H19L21 10H16L12 2Z" fill="#00d4ff" opacity="0.9"/>
-      <path d="M12 2L8 10H16L12 2Z" fill="#00d4ff"/>
+      style="transform:rotate(${track || 0}deg); filter:drop-shadow(0 0 3px #00b84d88)">
+      <path d="M12 2L8 10H3L5 14H9L7 22H12H17L15 14H19L21 10H16L12 2Z" fill="#00b84d" opacity="0.9"/>
+      <path d="M12 2L8 10H16L12 2Z" fill="#00b84d"/>
     </svg>`,
     iconSize: [18, 18], iconAnchor: [9, 9],
   });
@@ -187,7 +187,34 @@ async function fetchFlights() {
   }
 }
 
+// ── FILTERED AIRSPACE ──────────────────────
+const ALLOWED_ASP = new Set(['NZA153','NZG153','NZC172','NZA146','NZB178','NZD125','NZD130']);
+
+function normalizeAspName(name) {
+  return String(name || '').toUpperCase().replace(/\s+/g, '');
+}
+
+async function loadAirspace() {
+  try {
+    const gcsUrl = 'https://storage.googleapis.com/29f98e10-a489-4c82-ae5e-489dbcd4912f/nz_asp.geojson';
+    const res = await fetch(`${PROXY}/?url=${encodeURIComponent(gcsUrl)}`);
+    const geojson = await res.json();
+    L.geoJSON(geojson, {
+      filter: f => {
+        const n = normalizeAspName(f.properties.name || f.properties.Name || f.properties.AN || '');
+        for (const a of ALLOWED_ASP) { if (n.includes(a)) return true; }
+        return false;
+      },
+      style: () => ({ color: '#00aaff', weight: 1.5, opacity: 0.75, fillColor: '#00aaff', fillOpacity: 0.06 }),
+      interactive: false,
+    }).addTo(map).bringToBack();
+  } catch (e) {
+    console.warn('Airspace load failed:', e.message);
+  }
+}
+
 fetchQNH();
+loadAirspace();
 fetchFlights();
 setInterval(fetchFlights, 30000);
 </script>
