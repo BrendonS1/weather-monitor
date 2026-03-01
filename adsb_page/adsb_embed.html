@@ -50,7 +50,7 @@ map.whenReady(() => {
   const size = map.getSize();
   const nznePx = map.project([LAT, LON], map.getZoom());
   // Target: NZNE at 75% from top (25% from bottom); currently at 50% (center)
-  const dy = size.y * (window.innerWidth > 768 ? 0.35 : 0.40); // desktop: 85% from top, mobile: 90%
+  const dy = size.y * (window.innerWidth > 768 ? 0.30 : 0.35); // desktop: 80% from top, mobile: 85%
   const newCenter = map.unproject([nznePx.x, nznePx.y - dy], map.getZoom());
   map.setView(newCenter, map.getZoom(), { animate: false });
 });
