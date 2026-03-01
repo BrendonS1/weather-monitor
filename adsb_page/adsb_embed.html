@@ -13,6 +13,16 @@
   .leaflet-control-zoom { display: none; }
   .leaflet-control-attribution { display: none; }
   .plane-label { background: none !important; border: none !important; }
+  .ac-map-label { background: none; border: none; pointer-events: none; white-space: nowrap; }
+  .ac-map-label-inner {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; line-height: 1.3; padding: 2px 4px;
+    background: rgba(7,11,15,0.75);
+    border-left: 1px solid rgba(0,212,255,0.4);
+    color: #c8dde8;
+  }
+  .ac-map-label-inner .lbl-call { color: #00d4ff; }
+  .ac-map-label-inner .lbl-alt  { color: #00ff9d; }
 </style>
 </head>
 <body>
@@ -85,7 +95,47 @@ function speedVectorEndpoint(lat, lon, trackDeg, speedKt) {
   return [lat + dlat, lon + dlon];
 }
 
+// ── ALTITUDE FORMATTING (mirrors main tracker) ────────────────────────────
+const TRANSITION_ALT_FT = 13000;
+const STD_QNH = 1013.25;
+let currentQNH = STD_QNH;
+
+function pressureAltToQNH(ft, qnh) { return ft + (qnh - STD_QNH) * 27; }
+
+function fmtAlt(pressureAltFt) {
+  if (pressureAltFt == null || pressureAltFt === '') return '';
+  const ft = Number(pressureAltFt);
+  if (ft >= TRANSITION_ALT_FT) {
+    return 'FL' + String(Math.round(ft / 100)).padStart(3, '0');
+  }
+  const hundreds = Math.round(pressureAltToQNH(ft, currentQNH) / 100);
+  return 'A' + String(Math.max(0, hundreds)).padStart(3, '0');
+}
+
+function planeLabelIcon(callsign, alt) {
+  const call = (callsign || '').trim() || '?';
+  return L.divIcon({
+    className: 'ac-map-label',
+    html: `<div class="ac-map-label-inner">
+      <span class="lbl-call">${call}</span><br>
+      <span class="lbl-alt">${fmtAlt(alt)}</span>
+    </div>`,
+    iconSize: null,
+    iconAnchor: [-14, 10],
+  });
+}
+
+async function fetchQNH() {
+  try {
+    const res = await fetch(`${PROXY}/?url=${encodeURIComponent('http://weather.nsac.co.nz/NEmetData.txt')}`);
+    const data = await res.json();
+    const qnh = Math.round(data.thb0seapress);
+    if (qnh >= 900 && qnh <= 1100) currentQNH = qnh;
+  } catch (e) { /* use default */ }
+}
+
 let markers = {};
+let labelMarkers = {};
 let vectorLines = {};
 
 async function fetchFlights() {
@@ -99,6 +149,7 @@ async function fetchFlights() {
     for (const hex of Object.keys(markers)) {
       if (!currentHexes.has(hex)) {
         markers[hex].remove(); delete markers[hex];
+        if (labelMarkers[hex]) { labelMarkers[hex].remove(); delete labelMarkers[hex]; }
         if (vectorLines[hex]) { vectorLines[hex].remove(); delete vectorLines[hex]; }
       }
     }
@@ -118,9 +169,16 @@ async function fetchFlights() {
       if (markers[ac.hex]) {
         markers[ac.hex].setLatLng([ac.lat, ac.lon]);
         markers[ac.hex].setIcon(planeIcon(ac.track));
+        if (labelMarkers[ac.hex]) {
+          labelMarkers[ac.hex].setLatLng([ac.lat, ac.lon]);
+          labelMarkers[ac.hex].setIcon(planeLabelIcon(ac.flight, ac.alt_baro));
+        }
       } else {
         markers[ac.hex] = L.marker([ac.lat, ac.lon], {
           icon: planeIcon(ac.track), zIndexOffset: 100,
+        }).addTo(map);
+        labelMarkers[ac.hex] = L.marker([ac.lat, ac.lon], {
+          icon: planeLabelIcon(ac.flight, ac.alt_baro), zIndexOffset: 99, interactive: false,
         }).addTo(map);
       }
     });
@@ -129,6 +187,7 @@ async function fetchFlights() {
   }
 }
 
+fetchQNH();
 fetchFlights();
 setInterval(fetchFlights, 30000);
 </script>
