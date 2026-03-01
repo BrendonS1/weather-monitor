@@ -35,6 +35,16 @@ const map = L.map('map', {
   touchZoom: false,
 });
 
+// Shift center so NZNE appears 25% up from the bottom of the widget
+map.whenReady(() => {
+  const size = map.getSize();
+  const nznePx = map.project([LAT, LON], map.getZoom());
+  // Target: NZNE at 75% from top (25% from bottom); currently at 50% (center)
+  const dy = size.y * 0.25; // move center northward by 25% of height
+  const newCenter = map.unproject([nznePx.x, nznePx.y - dy], map.getZoom());
+  map.setView(newCenter, map.getZoom(), { animate: false });
+});
+
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   subdomains: 'abcd', maxZoom: 19,
 }).addTo(map);
