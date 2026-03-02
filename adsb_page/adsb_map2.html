@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>North Shore ADS-B · NZNE</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛩️</text></svg>">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;600;700&family=Share+Tech+Mono&display=swap"
+      rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"></noscript>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #070b0f;
+    --surface: #0d1318;
+    --surface2: #111920;
+    --border: #1e2d3a;
+    --accent: #00d4ff;
+    --accent2: #00ff9d;
+    --warn: #ff6b35;
+    --text: #c8dde8;
+    --text-dim: #4a6070;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-ui: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --green: #007e33;
+    --green-light: #00b84d;
+  }
+
+  html, body {
+    height: 100%;
+    background: linear-gradient(135deg, #007e33 0%, #00b84d 100%);
+    font-family: var(--font-ui);
+    overflow: hidden;
+  }
+
+  .tracker {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 1fr 300px;
+    height: 100vh;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .tracker.sidebar-hidden {
+    grid-template-columns: 1fr;
+  }
+  .tracker.sidebar-hidden .sidebar {
+    display: none;
+  }
+
+  /* ── HEADER ── */
+  header {
+    grid-column: 1 / -1;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    padding: 16px 24px;
+    gap: 20px;
+  }
+
+  .logo {
+    font-family: var(--font-ui);
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a1a;
+    letter-spacing: 0;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  .logo-sub {
+    font-size: 13px;
+    font-weight: 400;
+    color: #888;
+    letter-spacing: 0.5px;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 1px;
+  }
+
+  .live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green-light);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 24px;
+    margin-left: auto;
+    align-items: center;
+  }
+
+  .stat-item { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .stat-label { color: #888; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+  .stat-value { color: var(--green); font-size: 18px; font-weight: 700; line-height: 1; }
+
+  /* QNH input */
+  .qnh-widget {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+  }
+  .qnh-widget label {
+    font-size: 11px; color: #888; letter-spacing: 0.5px; font-weight: 600; text-transform: uppercase;
+  }
+  .qnh-widget input {
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    color: var(--green);
+    font-family: var(--font-ui);
+    font-size: 16px;
+    font-weight: 700;
+    width: 72px;
+    text-align: center;
+    padding: 3px 6px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .qnh-widget input:focus { border-color: var(--green); }
+
+  /* nav buttons in header */
+  .nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #007e33, #00b84d);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    white-space: nowrap;
+  }
+  .nav-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 126, 51, 0.4);
+  }
+  .nav-btn.inactive {
+    background: #e8e8e8;
+    color: #888;
+    box-shadow: none;
+  }
+  .nav-btn.inactive:hover {
+    background: #d8d8d8;
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* ── MAP ── */
+  #map {
+    background: var(--bg);
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* Leaflet overrides */
+  .leaflet-container { background: #070b0f; font-family: var(--font-ui); }
+  .leaflet-control-zoom { border: 1px solid var(--border) !important; }
+  .leaflet-control-zoom a {
+    background: var(--surface) !important;
+    color: var(--accent) !important;
+    border-color: var(--border) !important;
+    font-size: 16px !important;
+  }
+  .leaflet-control-zoom a:hover { background: var(--surface2) !important; }
+  .leaflet-control-attribution {
+    background: rgba(7,11,15,0.7) !important;
+    color: var(--text-dim) !important;
+    font-size: 9px !important;
+  }
+  .leaflet-control-attribution a { color: var(--accent) !important; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--surface);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .aircraft-count {
+    background: var(--accent);
+    color: #000;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 1px 6px;
+    border-radius: 2px;
+    min-width: 22px;
+    text-align: center;
+  }
+
+  .aircraft-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+
+  .aircraft-list::-webkit-scrollbar { width: 4px; }
+  .aircraft-list::-webkit-scrollbar-track { background: var(--bg); }
+  .aircraft-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .aircraft-item {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(30,45,58,0.5);
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .aircraft-item:hover, .aircraft-item.active {
+    background: rgba(0, 212, 255, 0.05);
+  }
+
+  .aircraft-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--accent);
+  }
+
+  .ac-callsign {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .ac-hex {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .ac-data {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px 8px;
+    font-size: 11px;
+  }
+
+  .ac-data-item { display: flex; flex-direction: column; }
+  .ac-data-label { font-size: 9px; color: var(--text-dim); letter-spacing: 0.5px; margin-bottom: 1px; }
+  .ac-data-val { color: var(--text); font-family: var(--font-mono); font-size: 11px; }
+  .ac-data-val.alt { color: var(--accent2); }
+
+  /* Detail panel */
+  .detail-panel {
+    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+    font-size: 12px;
+    background: var(--bg);
+    min-height: 130px;
+  }
+
+  .detail-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .detail-field { display: flex; flex-direction: column; gap: 2px; }
+  .detail-field-label { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; }
+  .detail-field-val {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  .no-selection {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; color: var(--text-dim);
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 2px;
+  }
+
+  /* API key banner */
+  .api-banner {
+    position: absolute;
+    top: 10px; left: 50%; transform: translateX(-50%);
+    z-index: 1000;
+    background: rgba(255,107,53,0.15);
+    border: 1px solid var(--warn);
+    color: var(--warn);
+    padding: 8px 16px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  /* Plane SVG icon */
+  .plane-label {
+    background: none !important;
+    border: none !important;
+  }
+
+  /* Range ring */
+  .range-label {
+    background: none; border: none;
+    font-family: var(--font-mono); font-size: 9px;
+    color: rgba(0,212,255,0.3); pointer-events: none;
+  }
+
+  /* Aircraft map label */
+  .ac-map-label {
+    background: none; border: none;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .ac-map-label-inner {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    line-height: 1.3;
+    padding: 2px 4px;
+    background: rgba(7,11,15,0.75);
+    border-left: 1px solid rgba(0,212,255,0.4);
+    color: #c8dde8;
+  }
+  .ac-map-label-inner .lbl-call { color: #00d4ff; }
+  .ac-map-label-inner .lbl-alt  { color: #00ff9d; }
+
+  /* Last updated */
+  .update-bar {
+    padding: 7px 16px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .update-bar .refresh-btn {
+    cursor: pointer;
+    color: var(--accent);
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    transition: background 0.15s;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    background: none;
+  }
+  .update-bar .refresh-btn:hover { background: rgba(0,212,255,0.1); }
+
+  #loading-overlay {
+    position: absolute;
+    inset: 0; z-index: 999;
+    background: rgba(7,11,15,0.8);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--accent); letter-spacing: 3px;
+    transition: opacity 0.5s;
+  }
+</style>
+</head>
+<body>
+
+<div class="tracker sidebar-hidden">
+  <header>
+    <div class="logo">
+      🛩️ North Shore ADS-B
+      <span class="logo-sub">NZNE · North Shore Aero Club</span>
+    </div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div class="header-stats">
+      <div class="stat-item">
+        <span class="stat-label">Aircraft</span>
+        <span class="stat-value" id="hdr-count">–</span>
+      </div>
+      <div class="qnh-widget">
+        <label for="qnh-input">QNH (hPa)</label>
+        <input id="qnh-input" type="number" min="900" max="1100" value="1013" step="1" onchange="onQNHChange()" oninput="onQNHChange()">
+      </div>
+      <button id="sidebar-toggle" class="nav-btn inactive" onclick="toggleSidebar()">☰ Traffic</button>
+      <button id="asp-toggle" class="nav-btn" onclick="toggleAirspace()">Airspace</button>
+    </div>
+  </header>
+
+  <div id="map">
+    <div id="loading-overlay">INITIALISING RADAR ···</div>
+    <div class="api-banner" id="api-banner" style="display:none">
+      ⚠ INSERT YOUR ADSB EXCHANGE API KEY — see config at top of script
+    </div>
+    <div id="asp-legend" style="
+      position:absolute;bottom:28px;left:12px;z-index:800;
+      background:rgba(13,19,24,0.88);border:1px solid #1e2d3a;
+      padding:8px 10px;font-family:'Share Tech Mono',monospace;font-size:9px;
+      color:#c8dde8;line-height:1.7;letter-spacing:0.5px;border-radius:2px;
+      pointer-events:none;
+    ">
+      <div style="color:#4a6070;letter-spacing:2px;margin-bottom:4px">AIRSPACE</div>
+      <div><span style="color:#cc44ff">■</span> CTR</div>
+      <div><span style="color:#cc44ff">─</span> CTA</div>
+      <div><span style="color:#00aaff">·····</span> MBZ</div>
+      <div><span style="color:#00aaff">───</span> CFZ</div>
+      <div><span style="color:#4488ff">■</span> GAA</div>
+      <div><span style="color:#ff2222">■</span> Military / Danger</div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span>TRAFFIC LIST</span>
+      <span class="aircraft-count" id="ac-count">0</span>
+    </div>
+    <div class="aircraft-list" id="ac-list">
+      <div style="padding:20px;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:2px">
+        AWAITING DATA…
+      </div>
+    </div>
+    <div class="detail-panel" id="detail-panel">
+      <div class="detail-title">SELECTED AIRCRAFT</div>
+      <div class="no-selection">— NO SELECTION —</div>
+    </div>
+    <div class="update-bar">
+      <span id="update-time">LAST UPDATE: –</span>
+      <button class="refresh-btn" onclick="fetchFlights()">↻ REFRESH</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════
+const CONFIG = {
+  proxyBase: 'https://weather-monitor-proxy-production.up.railway.app',
+  lat: -36.65639,
+  lon: 174.65602,
+  radiusNM: 100,
+  refreshSec: 30,
+  useDemoMode: false,
+};
+// ═══════════════════════════════════════════
+
+// ── MAP SETUP ─────────────────────────────
+const map = L.map('map', {
+  center: [CONFIG.lat, CONFIG.lon],
+  zoom: 9,
+  zoomControl: true,
+  attributionControl: true,
+});
+
+// Dark tile layer (CartoDB Dark Matter)
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap © CARTO',
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
+
+// Airfield marker
+const airfieldIcon = L.divIcon({
+  className: '',
+  html: `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="9" cy="9" r="8" stroke="#00ff9d" stroke-width="1.5" fill="none" stroke-dasharray="3 2"/>
+    <circle cx="9" cy="9" r="3" fill="#00ff9d" opacity="0.7"/>
+    <line x1="9" y1="1" x2="9" y2="5" stroke="#00ff9d" stroke-width="1.5"/>
+    <line x1="9" y1="13" x2="9" y2="17" stroke="#00ff9d" stroke-width="1.5"/>
+    <line x1="1" y1="9" x2="5" y2="9" stroke="#00ff9d" stroke-width="1.5"/>
+    <line x1="13" y1="9" x2="17" y2="9" stroke="#00ff9d" stroke-width="1.5"/>
+  </svg>`,
+  iconSize: [18, 18], iconAnchor: [9, 9],
+});
+L.marker([CONFIG.lat, CONFIG.lon], { icon: airfieldIcon })
+  .bindTooltip('NZNE · North Shore Aero Club', {
+    permanent: false, direction: 'right',
+    className: 'leaflet-dark-tooltip',
+  })
+  .addTo(map);
+
+// Range rings
+[50, 100].forEach(nm => {
+  const km = nm * 1.852;
+  L.circle([CONFIG.lat, CONFIG.lon], {
+    radius: km * 1000,
+    color: '#00d4ff', weight: 0.5, opacity: 0.2, fill: false, dashArray: '4 6',
+  }).addTo(map);
+  L.marker(
+    [CONFIG.lat + (km / 111.32), CONFIG.lon],
+    { icon: L.divIcon({ className: 'range-label', html: `${nm}NM`, iconAnchor: [14, 6] }) }
+  ).addTo(map);
+});
+
+// ── ALTITUDE FORMATTER ────────────────────
+const TRANSITION_ALT_FT = 13000;
+const STD_QNH = 1013.25;
+
+function getQNH() {
+  const v = parseFloat(document.getElementById('qnh-input')?.value);
+  return (v >= 900 && v <= 1100) ? v : STD_QNH;
+}
+
+function pressureAltToQNH(pressureAltFt, qnh) {
+  return pressureAltFt + (qnh - STD_QNH) * 27;
+}
+
+function fmtAlt(pressureAltFt) {
+  if (pressureAltFt === undefined || pressureAltFt === null || pressureAltFt === '') return '';
+  const ft = Number(pressureAltFt);
+  const qnh = getQNH();
+  const qnhAlt = pressureAltToQNH(ft, qnh);
+  if (ft >= TRANSITION_ALT_FT) {
+    const fl = Math.round(ft / 100);
+    return 'FL' + String(fl).padStart(3, '0');
+  } else {
+    const hundreds = Math.round(qnhAlt / 100);
+    return 'A' + String(Math.max(0, hundreds)).padStart(3, '0');
+  }
+}
+
+function onQNHChange() {
+  if (!aircraftData.length) return;
+  aircraftData.forEach(ac => {
+    if (labelMarkers[ac.hex]) {
+      labelMarkers[ac.hex].setIcon(planeLabelIcon(ac.flight, ac.alt_baro));
+    }
+  });
+  if (selectedHex) {
+    const ac = aircraftData.find(a => a.hex === selectedHex);
+    if (ac) renderDetail(ac);
+  }
+}
+
+// ── AIRCRAFT ICONS ────────────────────────
+function planeIcon(track, selected) {
+  const color = selected ? '#00ff9d' : '#00d4ff';
+  const size = selected ? 28 : 22;
+  return L.divIcon({
+    className: 'plane-label',
+    html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
+      style="transform:rotate(${track || 0}deg); filter:drop-shadow(0 0 4px ${color}88)">
+      <path d="M12 2L8 10H3L5 14H9L7 22H12H17L15 14H19L21 10H16L12 2Z"
+        fill="${color}" opacity="0.9"/>
+      <path d="M12 2L8 10H16L12 2Z" fill="${color}"/>
+    </svg>`,
+    iconSize: [size, size], iconAnchor: [size/2, size/2],
+  });
+}
+
+function planeLabelIcon(callsign, alt) {
+  const call = (callsign || '').trim() || '?';
+  const altStr = fmtAlt(alt);
+  return L.divIcon({
+    className: 'ac-map-label',
+    html: `<div class="ac-map-label-inner">
+      <span class="lbl-call">${call}</span><br>
+      <span class="lbl-alt">${altStr}</span>
+    </div>`,
+    iconSize: null,
+    iconAnchor: [-14, 10],
+  });
+}
+
+// ── NZ AIRSPACE OVERLAY ──────────────────────────────────────────────────────
+const HIDDEN_TYPES = new Set(['FIR', 'UIR', 'ADIZ', 'AWY', 'UNCLASSIFIED']);
+
+let airspaceLayer = null;
+let airspaceVisible = true;
+
+function getAirspaceStyle(props) {
+  const cls = props.icaoClass;
+  const type = props.type;
+  const name = String(props.name || '').toUpperCase();
+
+  // Filter out specific areas
+  if (['NZR 290','NZR 291','NZR 292','NZM204','NZM205','NZM206','NZM207','NZM208'].some(n => name.includes(n))) return null;
+
+  // GAA / General Aviation Area — NZG prefix, NZT prefix, or class:5
+  if (cls === 5 || name.startsWith('NZG') || name.includes('NZG') || name.includes('NZT')) {
+    return { color: '#4488ff', weight: 1.2, opacity: 0.7,
+             fillColor: '#4488ff', fillOpacity: 0.06, dashArray: null };
+  }
+
+  // class:8 = Military / Restricted / Danger — but only if NOT a GAA name
+  if (cls === 8) {
+    return { color: '#ff2222', weight: 1.5, opacity: 0.85,
+             fillColor: '#ff2222', fillOpacity: 0.1, dashArray: '5 3' };
+  }
+
+  // class:1 = CFZ — blue solid border + blue fill
+  if (cls === 1) {
+    return { color: '#00aaff', weight: 1.5, opacity: 0.85,
+             fillColor: '#00aaff', fillOpacity: 0.06, dashArray: null };
+  }
+
+  // class:4 or name contains CTR = CTR — purple border + purple fill
+  if (type === 4 || name.includes(' CTR')) {
+    return { color: '#cc44ff', weight: 1.5, opacity: 0.85,
+             fillColor: '#cc44ff', fillOpacity: 0.1, dashArray: null };
+  }
+
+  // class:2 or class:3 = CTA/TMA — purple border, no fill
+  if (cls === 2 || cls === 3) {
+    return { color: '#cc44ff', weight: 1.2, opacity: 0.75, fillOpacity: 0, dashArray: null };
+  }
+
+  // class:0 = MBZ — blue border + blue fill, solid dot pattern
+  if (cls === 0) {
+    return { color: '#00aaff', weight: 2, opacity: 0.85,
+             fillColor: '#00aaff', fillOpacity: 0.07,
+             dashArray: '1 7', lineCap: 'round' };
+  }
+
+  return null;
+}
+
+function buildAirspaceTooltip(props) {
+  const name  = props.name  || props.Name  || props.AN || '?';
+  const type  = props.type  || props.ASType  || '';
+  const cls = props.icaoClass !== undefined
+    ? (['A','B','C','D','E','F','G'][props.icaoClass] || '')
+    : String(props.class || props.ASClass || '');
+  const upper = props.upperLimit?.value !== undefined
+    ? `${props.upperLimit.value}${props.upperLimit.unit === 6 ? 'FL' : 'ft'}`
+    : (props.upper || props.Upper || props.AH || '');
+  const lower = props.lowerLimit?.value !== undefined
+    ? `${props.lowerLimit.value === 0 ? 'SFC' : props.lowerLimit.value + 'ft'}`
+    : (props.lower || props.Lower || props.AL || 'SFC');
+  return `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;line-height:1.5;background:#0d1318;color:#c8dde8;padding:6px 8px;border:1px solid #1e2d3a;border-radius:2px">
+    <b style="color:#00d4ff">${name}</b><br>
+    ${type ? `Type: ${type}<br>` : ''}${cls ? `Class: ${cls}<br>` : ''}
+    ${upper ? `Upper: ${upper}<br>` : ''}Lower: ${lower}
+  </div>`;
+}
+
+async function loadNZAirspace() {
+  const gcsUrl = 'https://storage.googleapis.com/29f98e10-a489-4c82-ae5e-489dbcd4912f/nz_asp.geojson';
+  const urls = [
+    `${CONFIG.proxyBase}/?url=${encodeURIComponent(gcsUrl)}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const geojson = await res.json();
+      if (!geojson.features?.length) continue;
+
+      airspaceLayer = L.geoJSON(geojson, {
+        style: f => getAirspaceStyle(f.properties) || { opacity: 0, fillOpacity: 0 },
+        filter: f => !!getAirspaceStyle(f.properties),
+        interactive: true,
+        onEachFeature: (feature, layer) => {
+          layer.bindTooltip(buildAirspaceTooltip(feature.properties), {
+            sticky: true, opacity: 1, className: 'asp-tooltip',
+          });
+        },
+      }).addTo(map);
+
+      airspaceLayer.bringToBack();
+      console.log(`NZ airspace loaded: ${geojson.features.length} features from ${url}`);
+      return;
+    } catch (e) {
+      console.warn('Airspace source failed:', url, e.message);
+    }
+  }
+
+  console.warn('NZ airspace could not be loaded — you may need to host nz_asp.geojson locally.');
+}
+
+function toggleSidebar() {
+  const tracker = document.querySelector('.tracker');
+  const btn = document.getElementById('sidebar-toggle');
+  const nowHidden = tracker.classList.toggle('sidebar-hidden');
+  btn.classList.toggle('inactive', nowHidden);
+  map.invalidateSize();
+}
+
+function toggleAirspace() {
+  if (!airspaceLayer) return;
+  airspaceVisible = !airspaceVisible;
+  const btn = document.getElementById('asp-toggle');
+  if (airspaceVisible) {
+    airspaceLayer.addTo(map);
+    airspaceLayer.bringToBack();
+    btn.classList.remove('inactive');
+  } else {
+    airspaceLayer.remove();
+    btn.classList.add('inactive');
+  }
+}
+
+// ── STATE ──────────────────────────────────
+let markers = {};
+let labelMarkers = {};
+let vectorLines = {};
+let selectedHex = null;
+let aircraftData = [];
+let refreshTimer = null;
+
+function speedVectorEndpoint(lat, lon, trackDeg, speedKt) {
+  const distNM = speedKt * (2 / 60);
+  const distKm = distNM * 1.852;
+  const trackRad = trackDeg * Math.PI / 180;
+  const dlat = (distKm / 111.32) * Math.cos(trackRad);
+  const dlon = (distKm / (111.32 * Math.cos(lat * Math.PI / 180))) * Math.sin(trackRad);
+  return [lat + dlat, lon + dlon];
+}
+
+// ── DEMO DATA ─────────
+function generateDemoData() {
+  const calls = ['ANZ123','QFA456','JST789','NZ301','NZ88','FJI302','EK408','SIA286','QFA1','ANZ87'];
+  const types = ['B738','A320','B77W','A321','B737','AT76','DH8D','A388','B789','E190'];
+  return Array.from({ length: 10 }, (_, i) => {
+    const angle = (i / 10) * 2 * Math.PI + Date.now() * 0.00005;
+    const r = 0.3 + Math.random() * 0.7;
+    return {
+      hex: (0xABCD00 + i).toString(16).toUpperCase(),
+      flight: calls[i % calls.length].padEnd(8),
+      lat: CONFIG.lat + Math.sin(angle) * r,
+      lon: CONFIG.lon + Math.cos(angle) * r * 1.3,
+      alt_baro: Math.floor(5000 + Math.random() * 35000),
+      gs: Math.floor(250 + Math.random() * 250),
+      track: (angle * 180 / Math.PI + 90) % 360,
+      squawk: String(1200 + Math.floor(Math.random() * 2000)).padStart(4,'0'),
+      type: types[i % types.length],
+    };
+  });
+}
+
+// ── FETCH ──────────────────────────────────
+async function fetchFlights() {
+  if (CONFIG.useDemoMode) {
+    document.getElementById('api-banner').style.display = 'block';
+    aircraftData = generateDemoData();
+    renderFlights(aircraftData);
+    return;
+  }
+
+  try {
+    const url = `${CONFIG.proxyBase}/api/adsb?lat=${CONFIG.lat}&lon=${CONFIG.lon}&dist=${CONFIG.radiusNM}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.error) { console.error('ADS-B proxy error:', json.error); return; }
+    aircraftData = (json.ac || []).filter(a => a.lat && a.lon);
+    renderFlights(aircraftData);
+  } catch (e) {
+    console.error('ADS-B fetch error:', e);
+  }
+}
+
+// ── RENDER ─────────────────────────────────
+function renderFlights(aircraft) {
+  const nowDate = new Date();
+  document.getElementById('update-time').textContent =
+    `LAST UPDATE: ${nowDate.toLocaleTimeString('en-NZ',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
+  document.getElementById('ac-count').textContent = aircraft.length;
+  document.getElementById('hdr-count').textContent = aircraft.length;
+
+  const currentHexes = new Set(aircraft.map(a => a.hex));
+  for (const hex of Object.keys(markers)) {
+    if (!currentHexes.has(hex)) {
+      markers[hex].remove(); delete markers[hex];
+      if (labelMarkers[hex]) { labelMarkers[hex].remove(); delete labelMarkers[hex]; }
+      if (vectorLines[hex]) { vectorLines[hex].remove(); delete vectorLines[hex]; }
+    }
+  }
+
+  aircraft.forEach(ac => {
+    if (!ac.lat || !ac.lon) return;
+    const isSelected = ac.hex === selectedHex;
+
+    if (ac.track != null && ac.gs) {
+      const tip = speedVectorEndpoint(ac.lat, ac.lon, ac.track, ac.gs);
+      const vectorColor = isSelected ? '#ffaa00' : '#ff6600';
+      if (vectorLines[ac.hex]) {
+        vectorLines[ac.hex].setLatLngs([[ac.lat, ac.lon], tip]);
+        vectorLines[ac.hex].setStyle({ color: vectorColor });
+      } else {
+        vectorLines[ac.hex] = L.polyline([[ac.lat, ac.lon], tip], {
+          color: vectorColor, weight: 1.5, opacity: 0.8, interactive: false,
+        }).addTo(map);
+      }
+    }
+
+    if (markers[ac.hex]) {
+      markers[ac.hex].setLatLng([ac.lat, ac.lon]);
+      markers[ac.hex].setIcon(planeIcon(ac.track, isSelected));
+      if (labelMarkers[ac.hex]) {
+        labelMarkers[ac.hex].setLatLng([ac.lat, ac.lon]);
+        labelMarkers[ac.hex].setIcon(planeLabelIcon(ac.flight, ac.alt_baro));
+      }
+    } else {
+      markers[ac.hex] = L.marker([ac.lat, ac.lon], { icon: planeIcon(ac.track, isSelected), zIndexOffset: 100 })
+        .addTo(map)
+        .on('click', () => selectAircraft(ac.hex));
+      labelMarkers[ac.hex] = L.marker([ac.lat, ac.lon], { icon: planeLabelIcon(ac.flight, ac.alt_baro), zIndexOffset: 99, interactive: false })
+        .addTo(map);
+    }
+  });
+
+  renderList(aircraft);
+
+  const ov = document.getElementById('loading-overlay');
+  if (ov) { ov.style.opacity = '0'; setTimeout(() => ov.remove(), 600); }
+}
+
+function selectAircraft(hex) {
+  selectedHex = hex;
+  const ac = aircraftData.find(a => a.hex === hex);
+  if (!ac) return;
+
+  aircraftData.forEach(a => {
+    const sel = a.hex === hex;
+    if (markers[a.hex]) markers[a.hex].setIcon(planeIcon(a.track, sel));
+    if (labelMarkers[a.hex]) labelMarkers[a.hex].setIcon(planeLabelIcon(a.flight, a.alt_baro));
+    if (vectorLines[a.hex]) vectorLines[a.hex].setStyle({
+      color: sel ? '#ffaa00' : '#ff6600',
+      opacity: sel ? 1 : 0.8,
+      weight: sel ? 2 : 1.5,
+    });
+  });
+
+  map.panTo([ac.lat, ac.lon]);
+  renderList(aircraftData);
+  renderDetail(ac);
+}
+
+function renderList(aircraft) {
+  const list = document.getElementById('ac-list');
+  if (!aircraft.length) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:2px">NO TRAFFIC IN RANGE</div>';
+    return;
+  }
+  list.innerHTML = aircraft.map(ac => {
+    const active = ac.hex === selectedHex ? 'active' : '';
+    const alt = ac.alt_baro ? `${Number(ac.alt_baro).toLocaleString()}ft` : '–';
+    const spd = ac.gs ? `${Math.round(ac.gs)}kt` : '–';
+    return `<div class="aircraft-item ${active}" onclick="selectAircraft('${ac.hex}')">
+      <div class="ac-callsign">${(ac.flight||'UNKNOWN').trim()}</div>
+      <div class="ac-hex">${ac.hex} ${ac.type ? '· ' + ac.type : ''}</div>
+      <div class="ac-data">
+        <div class="ac-data-item"><span class="ac-data-label">ALT</span><span class="ac-data-val alt">${alt}</span></div>
+        <div class="ac-data-item"><span class="ac-data-label">GS</span><span class="ac-data-val">${spd}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderDetail(ac) {
+  const panel = document.getElementById('detail-panel');
+  const fmt = (v, unit='') => v !== undefined && v !== null ? `${typeof v === 'number' ? v.toLocaleString() : v}${unit}` : '–';
+  panel.innerHTML = `
+    <div class="detail-title">SELECTED // ${(ac.flight||'').trim() || ac.hex}</div>
+    <div class="detail-grid">
+      <div class="detail-field"><span class="detail-field-label">CALLSIGN</span><span class="detail-field-val">${(ac.flight||'–').trim()}</span></div>
+      <div class="detail-field"><span class="detail-field-label">SQUAWK</span><span class="detail-field-val">${fmt(ac.squawk)}</span></div>
+      <div class="detail-field"><span class="detail-field-label">ALTITUDE</span><span class="detail-field-val">${fmtAlt(ac.alt_baro)} <span style="color:var(--text-dim);font-size:10px">(${ac.alt_baro?Math.round(pressureAltToQNH(Number(ac.alt_baro),getQNH())).toLocaleString()+'ft':'–'})</span></span></div>
+      <div class="detail-field"><span class="detail-field-label">GND SPEED</span><span class="detail-field-val">${fmt(ac.gs ? Math.round(ac.gs) : null,'kt')}</span></div>
+      <div class="detail-field"><span class="detail-field-label">TRACK</span><span class="detail-field-val">${fmt(ac.track ? Math.round(ac.track) : null,'°')}</span></div>
+      <div class="detail-field"><span class="detail-field-label">TYPE</span><span class="detail-field-val">${fmt(ac.type)}</span></div>
+      <div class="detail-field"><span class="detail-field-label">LAT</span><span class="detail-field-val">${ac.lat?.toFixed(4)||'–'}</span></div>
+      <div class="detail-field"><span class="detail-field-label">LON</span><span class="detail-field-val">${ac.lon?.toFixed(4)||'–'}</span></div>
+    </div>`;
+}
+
+// ── QNH FROM WEATHER STATION ───────────────
+async function fetchQNH() {
+  try {
+    const url = `${CONFIG.proxyBase}/?url=${encodeURIComponent('http://weather.nsac.co.nz/NEmetData.txt')}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const qnh = Math.round(data.thb0seapress);
+    if (qnh >= 900 && qnh <= 1100) {
+      document.getElementById('qnh-input').value = qnh;
+      onQNHChange();
+    }
+  } catch (e) {
+    console.warn('QNH fetch failed, using default:', e.message);
+  }
+}
+
+// ── INIT ───────────────────────────────────
+loadNZAirspace();
+fetchQNH();
+fetchFlights();
+refreshTimer = setInterval(fetchFlights, CONFIG.refreshSec * 1000);
+</script>
+</body>
+</html>
