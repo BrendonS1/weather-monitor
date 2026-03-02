@@ -8,7 +8,11 @@
     <script src="https://cdn.plot.ly/plotly-basic-2.27.0.min.js" defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://weather-monitor-proxy-production.up.railway.app">
+    <link rel="preconnect" href="https://weather-monitor-wind-api-production.up.railway.app">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;600;700&display=swap"
+          rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <style>
         * {
             margin: 0;
@@ -678,6 +682,25 @@
                 console.error('Cache write error:', e);
             }
         }
+        const WIND_CACHE_KEY = 'nzne_wind_cache';
+        const PRESSURE_CACHE_KEY = 'nzne_pressure_cache';
+        const CHART_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+        function getCachedChartData(key) {
+            try {
+                const cached = localStorage.getItem(key);
+                if (!cached) return null;
+                const { data, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp < CHART_CACHE_TTL) return data;
+                return null;
+            } catch (e) { return null; }
+        }
+
+        function setCachedChartData(key, data) {
+            try {
+                localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+            } catch (e) {}
+        }
         // ========== END CLIENT-SIDE CACHE ==========
 
         function setLoadingState() {
@@ -1058,82 +1081,67 @@
             }
         }
 
+        function renderWindChart(history) {
+            if (typeof Plotly === 'undefined' || !history.timestamps.length) return;
+            const now = new Date();
+            const minutesAgo = history.timestamps.map(ts => (now - new Date(ts)) / 60000);
+            Plotly.newPlot('windChart', [
+                { x: minutesAgo, y: history.wind_avg, name: 'Wind Avg', mode: 'lines', line: { color: '#007e33', width: 3 }, fill: 'tozeroy', fillcolor: 'rgba(0, 126, 51, 0.1)' },
+                { x: minutesAgo, y: history.wind_gust, name: 'Gust', mode: 'lines', line: { color: '#007e33', width: 2, dash: 'dot' } },
+                { x: minutesAgo, y: history.wind_xwind, name: 'Crosswind', mode: 'lines', marker: { color: '#F44336', width: 1 } }
+            ], {
+                xaxis: { title: 'Minutes ago', range: [Math.max(...minutesAgo), 0], gridcolor: '#e0e0e0' },
+                yaxis: { title: 'Strength (kts)', rangemode: 'tozero', gridcolor: '#e0e0e0' },
+                margin: { t: 10, l: 50, r: 20, b: 40 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#666', family: 'Roboto Condensed' },
+                legend: { orientation: 'h', y: 1.12, x: 0.5, xanchor: 'center' },
+                showlegend: true
+            }, { displayModeBar: false, staticPlot: true });
+        }
+
         async function fetchWindHistory() {
+            const cached = getCachedChartData(WIND_CACHE_KEY);
+            if (cached) renderWindChart(cached);
             try {
                 const response = await fetch(WIND_API_URL + '?_=' + Date.now());
                 if (!response.ok) throw new Error(`Wind API fetch failed: ${response.status} ${response.statusText}`);
                 const history = await response.json();
-
-                if (typeof Plotly !== 'undefined' && history.timestamps.length > 0) {
-                    const now = new Date();
-                    const minutesAgo = history.timestamps.map(ts => {
-                        return (now - new Date(ts)) / 60000;
-                    });
-                    const windAvgTrace = {
-                        x: minutesAgo,
-                        y: history.wind_avg,
-                        name: 'Wind Avg',
-                        mode: 'lines',
-                        line: { color: '#007e33', width: 3 },
-                        fill: 'tozeroy',
-                        fillcolor: 'rgba(0, 126, 51, 0.1)'
-                    };
-                    const windGustTrace = {
-                        x: minutesAgo,
-                        y: history.wind_gust,
-                        name: 'Gust',
-                        mode: 'lines',
-                        line: { color: '#007e33', width: 2, dash: 'dot' }
-                    };
-                    const xwindTrace = {
-                        x: minutesAgo,
-                        y: history.wind_xwind,
-                        name: 'Crosswind',
-                        mode: 'lines',
-                        marker: { color: '#F44336', width: 1 }
-                    };
-                    Plotly.newPlot('windChart', [windAvgTrace, windGustTrace, xwindTrace], {
-                        xaxis: { title: 'Minutes ago', range: [Math.max(...minutesAgo), 0], gridcolor: '#e0e0e0' },
-                        yaxis: { title: 'Strength (kts)', rangemode: 'tozero', gridcolor: '#e0e0e0' },
-                        margin: { t: 10, l: 50, r: 20, b: 40 },
-                        paper_bgcolor: 'rgba(0,0,0,0)',
-                        plot_bgcolor: 'rgba(0,0,0,0)',
-                        font: { color: '#666', family: 'Roboto Condensed' },
-                        legend: { orientation: 'h', y: 1.12, x: 0.5, xanchor: 'center' },
-                        showlegend: true
-                    }, { displayModeBar: false, staticPlot: true });
-                }
+                setCachedChartData(WIND_CACHE_KEY, history);
+                renderWindChart(history);
             } catch (err) {
                 console.error('Wind history error:', err);
             }
         }
 
+        function renderPressureChart(history) {
+            pressureHistory = history;
+            updatePressureTrend();
+            if (typeof Plotly === 'undefined' || !history.timestamps.length) return;
+            const now = new Date();
+            const minutesAgo = history.timestamps.map(ts => (now - new Date(ts)) / 60000);
+            Plotly.newPlot('pressureChart', [
+                { x: minutesAgo, y: history.sea_press_hpa, mode: 'markers', marker: { color: '#007e33', size: 3 } }
+            ], {
+                xaxis: { title: 'Hours ago', range: [Math.max(...minutesAgo), 0], gridcolor: '#e0e0e0', tickvals: [0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720], ticktext: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] },
+                yaxis: { title: 'hPa', gridcolor: '#e0e0e0' },
+                margin: { t: 5, l: 50, r: 10, b: 30 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#666', family: 'Roboto Condensed' }
+            }, { displayModeBar: false, staticPlot: true });
+        }
+
         async function fetchPressureHistory() {
+            const cached = getCachedChartData(PRESSURE_CACHE_KEY);
+            if (cached) renderPressureChart(cached);
             try {
                 const response = await fetch(PRESSURE_API_URL + '?_=' + Date.now());
                 if (!response.ok) throw new Error(`Pressure API fetch failed: ${response.status} ${response.statusText}`);
                 const history = await response.json();
-                pressureHistory = history;
-                updatePressureTrend();
-
-                if (typeof Plotly !== 'undefined' && history.timestamps.length > 0) {
-                    const now = new Date();
-                    const minutesAgo = history.timestamps.map(ts => (now - new Date(ts)) / 60000);
-                    const pressTrace = {
-                        x: minutesAgo,
-                        y: history.sea_press_hpa,
-                        mode: 'markers',
-                        marker: { color: '#007e33', size: 3 }
-                    };
-                    Plotly.newPlot('pressureChart', [pressTrace], {
-                        xaxis: { title: 'Hours ago', range: [Math.max(...minutesAgo), 0], gridcolor: '#e0e0e0', tickvals: [0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720], ticktext: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] },
-                        yaxis: { title: 'hPa', gridcolor: '#e0e0e0' },
-                        margin: { t: 5, l: 50, r: 10, b: 30 },
-                        paper_bgcolor: 'rgba(0,0,0,0)',
-                        plot_bgcolor: 'rgba(0,0,0,0)',
-                        font: { color: '#666', family: 'Roboto Condensed' }
-                    }, { displayModeBar: false, staticPlot: true });
-                }
+                setCachedChartData(PRESSURE_CACHE_KEY, history);
+                renderPressureChart(history);
             } catch (err) {
                 console.error('Pressure history error:', err);
             }
@@ -1146,9 +1154,11 @@
             fetchWeatherData();
             fetchWindHistory();
             fetchPressureHistory();
+            fetchCameras();
             setInterval(fetchWeatherData, UPDATE_INTERVAL);
             setInterval(fetchWindHistory, UPDATE_INTERVAL);
             setInterval(fetchPressureHistory, UPDATE_INTERVAL);
+            setInterval(fetchCameras, UPDATE_INTERVAL);
         });
 
         // Camera fetching function
@@ -1215,9 +1225,6 @@
         console.error('Error fetching cameras:', error);
     }
 }
-
-fetchCameras();
-setInterval(fetchCameras, UPDATE_INTERVAL);
 
 // Resize Plotly charts when window resizes
 window.addEventListener('resize', () => {
