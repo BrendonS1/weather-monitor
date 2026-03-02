@@ -604,7 +604,7 @@ function onQNHChange() {
 
 // ── AIRCRAFT ICONS ────────────────────────
 function planeIcon(track, selected) {
-  const color = selected ? '#ffe033' : '#ffc300';
+  const color = selected ? '#00b84d' : '#007e33';
   const size = selected ? 28 : 22;
   return L.divIcon({
     className: 'plane-label',
@@ -838,7 +838,7 @@ function renderFlights(aircraft) {
 
     if (ac.track != null && ac.gs) {
       const tip = speedVectorEndpoint(ac.lat, ac.lon, ac.track, ac.gs);
-      const vectorColor = isSelected ? '#ffaa00' : '#ff6600';
+      const vectorColor = isSelected ? '#a8bbc8' : '#8ca0b0';
       if (vectorLines[ac.hex]) {
         vectorLines[ac.hex].setLatLngs([[ac.lat, ac.lon], tip]);
         vectorLines[ac.hex].setStyle({ color: vectorColor });
@@ -881,7 +881,7 @@ function selectAircraft(hex) {
     if (markers[a.hex]) markers[a.hex].setIcon(planeIcon(a.track, sel));
     if (labelMarkers[a.hex]) labelMarkers[a.hex].setIcon(planeLabelIcon(a.flight, a.alt_baro));
     if (vectorLines[a.hex]) vectorLines[a.hex].setStyle({
-      color: sel ? '#ffaa00' : '#ff6600',
+      color: sel ? '#a8bbc8' : '#8ca0b0',
       opacity: sel ? 1 : 0.8,
       weight: sel ? 2 : 1.5,
     });
