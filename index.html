@@ -387,14 +387,10 @@
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                 <div>
                     <h1>🛩️ North Shore Airport Weather</h1>
-                    <div class="live-indicator">
-                        <span class="live-dot"></span>
-                        LIVE DATA
-                    </div>
                 </div>
-                <div class="header-direction" style="text-align: right;">
-                    <div style="font-size: 14px; color: #888; margin-bottom: 5px;">NZNE</div>
-                    <div style="font-size: 24px; font-weight: 700; color: #007e33;">210° M</div>
+                <div class="live-indicator">
+                    <span class="live-dot"></span>
+                    LIVE DATA
                 </div>
             </div>
             <div class="metar">
@@ -406,11 +402,9 @@
         </div>
 
         <!-- Notice (if active) -->
-        <div class="notice">
+        <div class="notice" id="noticeCard" style="display:none">
             <div class="notice-title">⚠️ NOTICES</div>
-            <div>Aircraft should join overhead.
-                <p>Caution increased bird activity.</p>
-                <p>All pilots must check operational NOTAMS at <a href="https://gopreflight.co.nz/app" target="_blank">gopreflight.co.nz</a>.</p></p></div>
+            <div id="noticeText"></div>
         </div>
 
         <!-- Main Weather Cards -->
@@ -1154,12 +1148,33 @@
             fetchWeatherData();
             fetchWindHistory();
             fetchPressureHistory();
+            fetchNotice();
             fetchCameras();
             setInterval(fetchWeatherData, UPDATE_INTERVAL);
             setInterval(fetchWindHistory, UPDATE_INTERVAL);
             setInterval(fetchPressureHistory, UPDATE_INTERVAL);
+            setInterval(fetchNotice, UPDATE_INTERVAL);
             setInterval(fetchCameras, UPDATE_INTERVAL);
         });
+
+        // Notice fetching function
+        async function fetchNotice() {
+            try {
+                const response = await fetch(NOTICE_URL);
+                if (!response.ok) throw new Error('Failed to fetch notice');
+                const data = await response.json();
+                const text = (data.NoticeText || '').trim();
+                const card = document.getElementById('noticeCard');
+                const el = document.getElementById('noticeText');
+                if (!text) { card.style.display = 'none'; return; }
+                // Insert <br> after every full stop except the last
+                const formatted = text.replace(/\.\s+(?=\S)/g, '.<br>');
+                el.innerHTML = formatted;
+                card.style.display = '';
+            } catch (err) {
+                console.error('Notice fetch error:', err);
+            }
+        }
 
         // Camera fetching function
         async function fetchCameras() {
