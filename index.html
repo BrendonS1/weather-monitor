@@ -702,7 +702,6 @@
                 return `<span class="skeleton-loader" style="width:${w};height:${h};"></span>`;
             }
             // Header
-            document.querySelector('[style*="font-size: 24px"]').innerHTML = skl('90px', '26px');
             document.querySelector('.metar').innerHTML = skl('75%', '30px');
             document.querySelector('.timestamp').innerHTML = skl('210px', '13px');
             // Wind
@@ -870,9 +869,6 @@
                 crosswindEl.style.color = '#333';
                 crosswindEl.style.fontWeight = '600';
             }
-
-            // ========== UPDATE HEADER ==========
-            document.querySelector('[style*="font-size: 24px"]').textContent = stale ? '###° M' : frmtDir(windDir) + '° M';
 
             // Build and update METAR
             if (stale) {
