@@ -604,7 +604,7 @@ function onQNHChange() {
 
 // ── AIRCRAFT ICONS ────────────────────────
 function planeIcon(track, selected) {
-  const color = selected ? '#00ff9d' : '#00d4ff';
+  const color = selected ? '#ffe033' : '#ffc300';
   const size = selected ? 28 : 22;
   return L.divIcon({
     className: 'plane-label',
@@ -720,12 +720,7 @@ async function loadNZAirspace() {
       airspaceLayer = L.geoJSON(geojson, {
         style: f => getAirspaceStyle(f.properties) || { opacity: 0, fillOpacity: 0 },
         filter: f => !!getAirspaceStyle(f.properties),
-        interactive: true,
-        onEachFeature: (feature, layer) => {
-          layer.bindTooltip(buildAirspaceTooltip(feature.properties), {
-            sticky: true, opacity: 1, className: 'asp-tooltip',
-          });
-        },
+        interactive: false,
       }).addTo(map);
 
       airspaceLayer.bringToBack();
