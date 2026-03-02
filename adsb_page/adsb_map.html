@@ -1,13 +1,39 @@
 <!DOCTYPE html>
+<!--
+  Styling changes from adsb_map.html → adsb_map2.html
+  =====================================================
+  What                              Before                        After
+  --------------------------------  ----------------------------  ----------------------------
+  Map label font (callsign/alt)     Share Tech Mono               Roboto Condensed 600
+  Range ring label font             Share Tech Mono               Roboto Condensed
+  Airspace tooltip font             Share Tech Mono               Roboto Condensed
+  Map label callsign colour         cyan #00d4ff                  #c8dde8 (light grey)
+  Map label altitude colour         green #00ff9d                 #ffffff white
+  Map label left border             cyan tint                     white 25% opacity
+  Airspace tooltip heading colour   cyan #00d4ff                  white
+  Sidebar altitude value            green --accent2               --text (same as speed)
+  Aircraft callsign/reg             cyan --accent                 #8ca0b0 (readable mid-grey)
+  Active item highlight             cyan 5%                       white 5%
+  Active item left bar              cyan                          white 50%
+  Aircraft count badge              cyan bg, black text           white 15% bg, --text
+  Detail panel values               cyan --accent                 --text (light)
+  Refresh button                    cyan                          --text (light)
+  Zoom +/− buttons                  cyan                          white
+  Attribution links                 cyan                          white 50%
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NZNE ADS-B Tracker</title>
+<title>North Shore ADS-B · NZNE</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛩️</text></svg>">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;600;700&family=Share+Tech+Mono&display=swap"
+      rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"></noscript>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -22,23 +48,25 @@
     --text: #c8dde8;
     --text-dim: #4a6070;
     --font-mono: 'Share Tech Mono', monospace;
-    --font-ui: 'Rajdhani', sans-serif;
+    --font-ui: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --green: #007e33;
+    --green-light: #00b84d;
   }
 
   html, body {
     height: 100%;
-    background: var(--bg);
-    color: var(--text);
+    background: linear-gradient(135deg, #007e33 0%, #00b84d 100%);
     font-family: var(--font-ui);
     overflow: hidden;
   }
 
   .tracker {
     display: grid;
-    grid-template-rows: 52px 1fr;
+    grid-template-rows: auto 1fr;
     grid-template-columns: 1fr 300px;
     height: 100vh;
-    gap: 0;
+    padding: 16px;
+    gap: 12px;
   }
 
   .tracker.sidebar-hidden {
@@ -48,63 +76,52 @@
     display: none;
   }
 
-  /* HEADER */
+  /* ── HEADER ── */
   header {
     grid-column: 1 / -1;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
-    padding: 0 20px;
+    padding: 16px 24px;
     gap: 20px;
-    position: relative;
-  }
-
-  header::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    opacity: 0.4;
   }
 
   .logo {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    letter-spacing: 3px;
-    color: var(--accent);
-    text-transform: uppercase;
-  }
-
-  .logo span { color: var(--accent2); }
-
-  .header-stats {
+    font-family: var(--font-ui);
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a1a;
+    letter-spacing: 0;
     display: flex;
-    gap: 24px;
-    margin-left: auto;
-    font-family: var(--font-mono);
-    font-size: 11px;
+    flex-direction: column;
+    line-height: 1.2;
   }
 
-  .stat-item { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-  .stat-label { color: var(--text-dim); font-size: 9px; letter-spacing: 1px; }
-  .stat-value { color: var(--accent2); font-size: 13px; }
+  .logo-sub {
+    font-size: 13px;
+    font-weight: 400;
+    color: #888;
+    letter-spacing: 0.5px;
+  }
 
   .live-badge {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--warn);
-    letter-spacing: 2px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green);
+    letter-spacing: 1px;
   }
 
   .live-dot {
-    width: 7px; height: 7px;
+    width: 8px; height: 8px;
     border-radius: 50%;
-    background: var(--warn);
+    background: var(--green-light);
     animation: pulse 1.5s ease-in-out infinite;
   }
 
@@ -113,10 +130,78 @@
     50% { opacity: 0.4; transform: scale(0.7); }
   }
 
-  /* MAP */
+  .header-stats {
+    display: flex;
+    gap: 24px;
+    margin-left: auto;
+    align-items: center;
+  }
+
+  .stat-item { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .stat-label { color: #888; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+  .stat-value { color: var(--green); font-size: 18px; font-weight: 700; line-height: 1; }
+
+  /* QNH input */
+  .qnh-widget {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+  }
+  .qnh-widget label {
+    font-size: 11px; color: #888; letter-spacing: 0.5px; font-weight: 600; text-transform: uppercase;
+  }
+  .qnh-widget input {
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    color: var(--green);
+    font-family: var(--font-ui);
+    font-size: 16px;
+    font-weight: 700;
+    width: 72px;
+    text-align: center;
+    padding: 3px 6px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .qnh-widget input:focus { border-color: var(--green); }
+
+  /* nav buttons in header */
+  .nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #007e33, #00b84d);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    white-space: nowrap;
+  }
+  .nav-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 126, 51, 0.4);
+  }
+  .nav-btn.inactive {
+    background: #e8e8e8;
+    color: #888;
+    box-shadow: none;
+  }
+  .nav-btn.inactive:hover {
+    background: #d8d8d8;
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* ── MAP ── */
   #map {
     background: var(--bg);
     position: relative;
+    border-radius: 12px;
+    overflow: hidden;
   }
 
   /* Leaflet overrides */
@@ -124,7 +209,7 @@
   .leaflet-control-zoom { border: 1px solid var(--border) !important; }
   .leaflet-control-zoom a {
     background: var(--surface) !important;
-    color: var(--accent) !important;
+    color: #ffffff !important;
     border-color: var(--border) !important;
     font-size: 16px !important;
   }
@@ -134,15 +219,15 @@
     color: var(--text-dim) !important;
     font-size: 9px !important;
   }
-  .leaflet-control-attribution a { color: var(--accent) !important; }
+  .leaflet-control-attribution a { color: rgba(255,255,255,0.5) !important; }
 
-  /* SIDEBAR */
+  /* ── SIDEBAR ── */
   .sidebar {
     background: var(--surface);
-    border-left: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
   }
 
   .sidebar-header {
@@ -158,8 +243,8 @@
   }
 
   .aircraft-count {
-    background: var(--accent);
-    color: #000;
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--text);
     font-size: 10px;
     font-weight: bold;
     padding: 1px 6px;
@@ -187,7 +272,7 @@
   }
 
   .aircraft-item:hover, .aircraft-item.active {
-    background: rgba(0, 212, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .aircraft-item.active::before {
@@ -195,13 +280,13 @@
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 2px;
-    background: var(--accent);
+    background: rgba(255, 255, 255, 0.5);
   }
 
   .ac-callsign {
     font-family: var(--font-mono);
     font-size: 13px;
-    color: var(--accent);
+    color: #8ca0b0;
     letter-spacing: 1px;
     margin-bottom: 4px;
   }
@@ -223,7 +308,7 @@
   .ac-data-item { display: flex; flex-direction: column; }
   .ac-data-label { font-size: 9px; color: var(--text-dim); letter-spacing: 0.5px; margin-bottom: 1px; }
   .ac-data-val { color: var(--text); font-family: var(--font-mono); font-size: 11px; }
-  .ac-data-val.alt { color: var(--accent2); }
+  .ac-data-val.alt { color: var(--text); }
 
   /* Detail panel */
   .detail-panel {
@@ -253,7 +338,7 @@
   .detail-field-val {
     font-family: var(--font-mono);
     font-size: 12px;
-    color: var(--accent);
+    color: var(--text);
   }
 
   .no-selection {
@@ -288,7 +373,7 @@
   /* Range ring */
   .range-label {
     background: none; border: none;
-    font-family: var(--font-mono); font-size: 9px;
+    font-family: var(--font-ui); font-size: 9px;
     color: rgba(0,212,255,0.3); pointer-events: none;
   }
 
@@ -299,16 +384,17 @@
     white-space: nowrap;
   }
   .ac-map-label-inner {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 600;
     line-height: 1.3;
-    padding: 2px 4px;
+    padding: 2px 5px;
     background: rgba(7,11,15,0.75);
-    border-left: 1px solid rgba(0,212,255,0.4);
+    border-left: 2px solid rgba(255,255,255,0.25);
     color: #c8dde8;
   }
-  .ac-map-label-inner .lbl-call { color: #00d4ff; }
-  .ac-map-label-inner .lbl-alt  { color: #00ff9d; }
+  .ac-map-label-inner .lbl-call { color: #c8dde8; }
+  .ac-map-label-inner .lbl-alt  { color: #ffffff; }
 
   /* Last updated */
   .update-bar {
@@ -325,7 +411,7 @@
 
   .update-bar .refresh-btn {
     cursor: pointer;
-    color: var(--accent);
+    color: var(--text);
     letter-spacing: 1px;
     padding: 2px 6px;
     border: 1px solid var(--border);
@@ -335,7 +421,7 @@
     font-size: 9px;
     background: none;
   }
-  .update-bar .refresh-btn:hover { background: rgba(0,212,255,0.1); }
+  .update-bar .refresh-btn:hover { background: rgba(255,255,255,0.08); }
 
   #loading-overlay {
     position: absolute;
@@ -346,53 +432,28 @@
     color: var(--accent); letter-spacing: 3px;
     transition: opacity 0.5s;
   }
-
-  /* QNH input */
-  .qnh-widget {
-    display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
-  }
-  .qnh-widget label {
-    font-size: 9px; color: var(--text-dim); letter-spacing: 1px;
-    font-family: var(--font-mono);
-  }
-  .qnh-widget input {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--accent2);
-    font-family: var(--font-mono);
-    font-size: 13px;
-    width: 64px;
-    text-align: center;
-    padding: 1px 4px;
-    border-radius: 2px;
-    outline: none;
-  }
-  .qnh-widget input:focus { border-color: var(--accent); }
 </style>
 </head>
 <body>
 
 <div class="tracker sidebar-hidden">
   <header>
-    <div class="logo">NZNE // <span>North Shore</span> ADS-B</div>
+    <div class="logo">
+      🛩️ North Shore ADS-B
+      <span class="logo-sub">NZNE · North Shore Aero Club</span>
+    </div>
     <div class="live-badge"><div class="live-dot"></div>LIVE</div>
     <div class="header-stats">
       <div class="stat-item">
-        <span class="stat-label">AIRCRAFT</span>
+        <span class="stat-label">Aircraft</span>
         <span class="stat-value" id="hdr-count">–</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">RANGE (NM)</span>
-        <span class="stat-value">100</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">ICAO</span>
-        <span class="stat-value">NZNE</span>
       </div>
       <div class="qnh-widget">
         <label for="qnh-input">QNH (hPa)</label>
         <input id="qnh-input" type="number" min="900" max="1100" value="1013" step="1" onchange="onQNHChange()" oninput="onQNHChange()">
       </div>
+      <button id="sidebar-toggle" class="nav-btn inactive" onclick="toggleSidebar()">☰ Traffic</button>
+      <button id="asp-toggle" class="nav-btn" onclick="toggleAirspace()">Airspace</button>
     </div>
   </header>
 
@@ -409,26 +470,13 @@
       pointer-events:none;
     ">
       <div style="color:#4a6070;letter-spacing:2px;margin-bottom:4px">AIRSPACE</div>
-      <div><span style="color:#cc44ff">■</span> CTR (purple fill)</div>
-      <div><span style="color:#cc44ff">─</span> CTA (no fill)</div>
-      <div><span style="color:#00aaff">·····</span> MBZ (blue fill)</div>
-      <div><span style="color:#00aaff">───</span> CFZ (blue fill)</div>
-      <div><span style="color:#4488ff">■</span> GAA (blue fill)</div>
+      <div><span style="color:#cc44ff">■</span> CTR</div>
+      <div><span style="color:#cc44ff">─</span> CTA</div>
+      <div><span style="color:#00aaff">·····</span> MBZ</div>
+      <div><span style="color:#00aaff">───</span> CFZ</div>
+      <div><span style="color:#4488ff">■</span> GAA</div>
       <div><span style="color:#ff2222">■</span> Military / Danger</div>
     </div>
-    <button id="sidebar-toggle" onclick="toggleSidebar()" style="
-      position:absolute;top:10px;right:10px;z-index:800;
-      background:rgba(0,212,255,0.1);border:1px solid var(--border);
-      color:var(--text-dim);font-family:var(--font-mono);font-size:10px;
-      letter-spacing:1px;padding:5px 8px;cursor:pointer;border-radius:2px;
-      transition:color 0.15s,background 0.15s;
-    ">☰ TRAFFIC</button>
-    <button id="asp-toggle" onclick="toggleAirspace()" style="
-      position:absolute;top:80px;right:10px;z-index:800;
-      background:rgba(0,212,255,0.15);border:1px solid #1e2d3a;
-      color:#00d4ff;font-family:'Share Tech Mono',monospace;font-size:10px;
-      letter-spacing:1px;padding:5px 8px;cursor:pointer;border-radius:2px;
-    ">ASP</button>
   </div>
 
   <div class="sidebar">
@@ -509,25 +557,20 @@ L.marker([CONFIG.lat, CONFIG.lon], { icon: airfieldIcon })
     color: '#00d4ff', weight: 0.5, opacity: 0.2, fill: false, dashArray: '4 6',
   }).addTo(map);
   L.marker(
-    [CONFIG.lat + (km / 111.32), CONFIG.lon], // rough offset north
+    [CONFIG.lat + (km / 111.32), CONFIG.lon],
     { icon: L.divIcon({ className: 'range-label', html: `${nm}NM`, iconAnchor: [14, 6] }) }
   ).addTo(map);
 });
 
 // ── ALTITUDE FORMATTER ────────────────────
-// ADS-B alt_baro is pressure altitude (referenced to 1013.25 hPa / std).
-// Below transition (13,000ft): correct to QNH altitude, show as A030 (hundreds of ft).
-// At or above transition: show as FL300 (standard pressure, hundreds of ft).
-// NZ transition altitude is 13,000ft.
 const TRANSITION_ALT_FT = 13000;
-const STD_QNH = 1013.25; // hPa
+const STD_QNH = 1013.25;
 
 function getQNH() {
   const v = parseFloat(document.getElementById('qnh-input')?.value);
   return (v >= 900 && v <= 1100) ? v : STD_QNH;
 }
 
-// QNH correction: each 1 hPa difference ≈ 27ft
 function pressureAltToQNH(pressureAltFt, qnh) {
   return pressureAltFt + (qnh - STD_QNH) * 27;
 }
@@ -537,19 +580,15 @@ function fmtAlt(pressureAltFt) {
   const ft = Number(pressureAltFt);
   const qnh = getQNH();
   const qnhAlt = pressureAltToQNH(ft, qnh);
-
   if (ft >= TRANSITION_ALT_FT) {
-    // Flight level: standard pressure altitude, rounded to nearest 100ft
     const fl = Math.round(ft / 100);
     return 'FL' + String(fl).padStart(3, '0');
   } else {
-    // Altitude: QNH-corrected, shown as A + hundreds
     const hundreds = Math.round(qnhAlt / 100);
     return 'A' + String(Math.max(0, hundreds)).padStart(3, '0');
   }
 }
 
-// Re-render all labels when QNH changes
 function onQNHChange() {
   if (!aircraftData.length) return;
   aircraftData.forEach(ac => {
@@ -557,7 +596,6 @@ function onQNHChange() {
       labelMarkers[ac.hex].setIcon(planeLabelIcon(ac.flight, ac.alt_baro));
     }
   });
-  // Also refresh detail panel if something is selected
   if (selectedHex) {
     const ac = aircraftData.find(a => a.hex === selectedHex);
     if (ac) renderDetail(ac);
@@ -566,7 +604,7 @@ function onQNHChange() {
 
 // ── AIRCRAFT ICONS ────────────────────────
 function planeIcon(track, selected) {
-  const color = selected ? '#00ff9d' : '#00d4ff';
+  const color = selected ? '#00e860' : '#00b84d';
   const size = selected ? 28 : 22;
   return L.divIcon({
     className: 'plane-label',
@@ -590,19 +628,11 @@ function planeLabelIcon(callsign, alt) {
       <span class="lbl-alt">${altStr}</span>
     </div>`,
     iconSize: null,
-    iconAnchor: [-14, 10],  // offset to the right of the plane icon
+    iconAnchor: [-14, 10],
   });
 }
 
 // ── NZ AIRSPACE OVERLAY ──────────────────────────────────────────────────────
-// Source: OpenAIP public GCS bucket — per-country GeoJSON exports, no auth needed.
-// Each class/type gets a distinct colour so pilots can read the map at a glance.
-// Toggle visibility with the "ASP" button added to the map.
-
-// ── AIRSPACE STYLE DEFINITIONS ───────────────────────────────────────────────
-// NZ-specific types: CTR, CTA, TMA, MBZ, CFZ, DANGER, RESTRICTED, MTA (military)
-// Styled to closely match NZ VNC chart conventions.
-
 const HIDDEN_TYPES = new Set(['FIR', 'UIR', 'ADIZ', 'AWY', 'UNCLASSIFIED']);
 
 let airspaceLayer = null;
@@ -614,7 +644,7 @@ function getAirspaceStyle(props) {
   const name = String(props.name || '').toUpperCase();
 
   // Filter out specific areas
-  if (['NZR 290','NZR 291','NZR 292'].some(n => name.includes(n))) return null;
+  if (['NZR 290','NZR 291','NZR 292','NZM204','NZM205','NZM206','NZM207','NZM208'].some(n => name.includes(n))) return null;
 
   // GAA / General Aviation Area — NZG prefix, NZT prefix, or class:5
   if (cls === 5 || name.startsWith('NZG') || name.includes('NZG') || name.includes('NZT')) {
@@ -667,15 +697,14 @@ function buildAirspaceTooltip(props) {
   const lower = props.lowerLimit?.value !== undefined
     ? `${props.lowerLimit.value === 0 ? 'SFC' : props.lowerLimit.value + 'ft'}`
     : (props.lower || props.Lower || props.AL || 'SFC');
-  return `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;line-height:1.5;background:#0d1318;color:#c8dde8;padding:6px 8px;border:1px solid #1e2d3a;border-radius:2px">
-    <b style="color:#00d4ff">${name}</b><br>
+  return `<div style="font-family:'Roboto Condensed',sans-serif;font-size:11px;line-height:1.5;background:#0d1318;color:#c8dde8;padding:6px 8px;border:1px solid #1e2d3a;border-radius:2px">
+    <b style="color:#ffffff">${name}</b><br>
     ${type ? `Type: ${type}<br>` : ''}${cls ? `Class: ${cls}<br>` : ''}
     ${upper ? `Upper: ${upper}<br>` : ''}Lower: ${lower}
   </div>`;
 }
 
 async function loadNZAirspace() {
-  // OpenAIP public GCS bucket – NZ airspace GeoJSON (no API key needed)
   const gcsUrl = 'https://storage.googleapis.com/29f98e10-a489-4c82-ae5e-489dbcd4912f/nz_asp.geojson';
   const urls = [
     `${CONFIG.proxyBase}/?url=${encodeURIComponent(gcsUrl)}`,
@@ -691,15 +720,9 @@ async function loadNZAirspace() {
       airspaceLayer = L.geoJSON(geojson, {
         style: f => getAirspaceStyle(f.properties) || { opacity: 0, fillOpacity: 0 },
         filter: f => !!getAirspaceStyle(f.properties),
-        interactive: true,
-        onEachFeature: (feature, layer) => {
-          layer.bindTooltip(buildAirspaceTooltip(feature.properties), {
-            sticky: true, opacity: 1, className: 'asp-tooltip',
-          });
-        },
+        interactive: false,
       }).addTo(map);
 
-      // Ensure airspace is below aircraft markers
       airspaceLayer.bringToBack();
       console.log(`NZ airspace loaded: ${geojson.features.length} features from ${url}`);
       return;
@@ -708,7 +731,6 @@ async function loadNZAirspace() {
     }
   }
 
-  // If all network sources fail, show a subtle notice
   console.warn('NZ airspace could not be loaded — you may need to host nz_asp.geojson locally.');
 }
 
@@ -716,8 +738,7 @@ function toggleSidebar() {
   const tracker = document.querySelector('.tracker');
   const btn = document.getElementById('sidebar-toggle');
   const nowHidden = tracker.classList.toggle('sidebar-hidden');
-  btn.style.color = nowHidden ? 'var(--text-dim)' : 'var(--accent)';
-  btn.style.background = nowHidden ? 'rgba(0,212,255,0.1)' : 'rgba(0,212,255,0.2)';
+  btn.classList.toggle('inactive', nowHidden);
   map.invalidateSize();
 }
 
@@ -728,24 +749,23 @@ function toggleAirspace() {
   if (airspaceVisible) {
     airspaceLayer.addTo(map);
     airspaceLayer.bringToBack();
-    if (btn) { btn.style.background = 'rgba(0,212,255,0.15)'; btn.style.color = '#00d4ff'; }
+    btn.classList.remove('inactive');
   } else {
     airspaceLayer.remove();
-    if (btn) { btn.style.background = 'transparent'; btn.style.color = 'var(--text-dim)'; }
+    btn.classList.add('inactive');
   }
 }
 
 // ── STATE ──────────────────────────────────
 let markers = {};
 let labelMarkers = {};
-let vectorLines = {};          // hex → Leaflet Polyline (speed vector)
+let vectorLines = {};
 let selectedHex = null;
 let aircraftData = [];
 let refreshTimer = null;
 
-// Returns the endpoint of a speed vector: 2-minute lookahead at current ground speed
 function speedVectorEndpoint(lat, lon, trackDeg, speedKt) {
-  const distNM = speedKt * (2 / 60);           // NM travelled in 2 min
+  const distNM = speedKt * (2 / 60);
   const distKm = distNM * 1.852;
   const trackRad = trackDeg * Math.PI / 180;
   const dlat = (distKm / 111.32) * Math.cos(trackRad);
@@ -753,7 +773,7 @@ function speedVectorEndpoint(lat, lon, trackDeg, speedKt) {
   return [lat + dlat, lon + dlon];
 }
 
-// ── DEMO DATA (used when no API key provided) ─────────
+// ── DEMO DATA ─────────
 function generateDemoData() {
   const calls = ['ANZ123','QFA456','JST789','NZ301','NZ88','FJI302','EK408','SIA286','QFA1','ANZ87'];
   const types = ['B738','A320','B77W','A321','B737','AT76','DH8D','A388','B789','E190'];
@@ -803,7 +823,6 @@ function renderFlights(aircraft) {
   document.getElementById('ac-count').textContent = aircraft.length;
   document.getElementById('hdr-count').textContent = aircraft.length;
 
-  // Remove old markers
   const currentHexes = new Set(aircraft.map(a => a.hex));
   for (const hex of Object.keys(markers)) {
     if (!currentHexes.has(hex)) {
@@ -817,24 +836,19 @@ function renderFlights(aircraft) {
     if (!ac.lat || !ac.lon) return;
     const isSelected = ac.hex === selectedHex;
 
-    // ── Draw / update speed vector ──
     if (ac.track != null && ac.gs) {
       const tip = speedVectorEndpoint(ac.lat, ac.lon, ac.track, ac.gs);
-      const vectorColor = isSelected ? '#ffaa00' : '#ff6600';
+      const vectorColor = isSelected ? '#ffffff' : 'rgba(255,255,255,0.55)';
       if (vectorLines[ac.hex]) {
         vectorLines[ac.hex].setLatLngs([[ac.lat, ac.lon], tip]);
         vectorLines[ac.hex].setStyle({ color: vectorColor });
       } else {
         vectorLines[ac.hex] = L.polyline([[ac.lat, ac.lon], tip], {
-          color: vectorColor,
-          weight: 1.5,
-          opacity: 0.8,
-          interactive: false,
+          color: vectorColor, weight: 1.5, opacity: 0.8, interactive: false,
         }).addTo(map);
       }
     }
 
-    // ── Aircraft marker + label ──
     if (markers[ac.hex]) {
       markers[ac.hex].setLatLng([ac.lat, ac.lon]);
       markers[ac.hex].setIcon(planeIcon(ac.track, isSelected));
@@ -853,7 +867,6 @@ function renderFlights(aircraft) {
 
   renderList(aircraft);
 
-  // Hide loading overlay
   const ov = document.getElementById('loading-overlay');
   if (ov) { ov.style.opacity = '0'; setTimeout(() => ov.remove(), 600); }
 }
@@ -863,13 +876,12 @@ function selectAircraft(hex) {
   const ac = aircraftData.find(a => a.hex === hex);
   if (!ac) return;
 
-  // Re-render icons + vector colours
   aircraftData.forEach(a => {
     const sel = a.hex === hex;
     if (markers[a.hex]) markers[a.hex].setIcon(planeIcon(a.track, sel));
     if (labelMarkers[a.hex]) labelMarkers[a.hex].setIcon(planeLabelIcon(a.flight, a.alt_baro));
     if (vectorLines[a.hex]) vectorLines[a.hex].setStyle({
-      color: sel ? '#ffaa00' : '#ff6600',
+      color: sel ? '#ffffff' : 'rgba(255,255,255,0.55)',
       opacity: sel ? 1 : 0.8,
       weight: sel ? 2 : 1.5,
     });
