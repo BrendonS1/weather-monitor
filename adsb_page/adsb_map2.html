@@ -1,4 +1,26 @@
 <!DOCTYPE html>
+<!--
+  Styling changes from adsb_map.html → adsb_map2.html
+  =====================================================
+  What                              Before                        After
+  --------------------------------  ----------------------------  ----------------------------
+  Map label font (callsign/alt)     Share Tech Mono               Roboto Condensed 600
+  Range ring label font             Share Tech Mono               Roboto Condensed
+  Airspace tooltip font             Share Tech Mono               Roboto Condensed
+  Map label callsign colour         cyan #00d4ff                  #c8dde8 (light grey)
+  Map label altitude colour         green #00ff9d                 #ffffff white
+  Map label left border             cyan tint                     white 25% opacity
+  Airspace tooltip heading colour   cyan #00d4ff                  white
+  Sidebar altitude value            green --accent2               --text (same as speed)
+  Aircraft callsign/reg             cyan --accent                 #8ca0b0 (readable mid-grey)
+  Active item highlight             cyan 5%                       white 5%
+  Active item left bar              cyan                          white 50%
+  Aircraft count badge              cyan bg, black text           white 15% bg, --text
+  Detail panel values               cyan --accent                 --text (light)
+  Refresh button                    cyan                          --text (light)
+  Zoom +/− buttons                  cyan                          white
+  Attribution links                 cyan                          white 50%
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -187,7 +209,7 @@
   .leaflet-control-zoom { border: 1px solid var(--border) !important; }
   .leaflet-control-zoom a {
     background: var(--surface) !important;
-    color: var(--accent) !important;
+    color: #ffffff !important;
     border-color: var(--border) !important;
     font-size: 16px !important;
   }
@@ -197,7 +219,7 @@
     color: var(--text-dim) !important;
     font-size: 9px !important;
   }
-  .leaflet-control-attribution a { color: var(--accent) !important; }
+  .leaflet-control-attribution a { color: rgba(255,255,255,0.5) !important; }
 
   /* ── SIDEBAR ── */
   .sidebar {
@@ -221,8 +243,8 @@
   }
 
   .aircraft-count {
-    background: var(--accent);
-    color: #000;
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--text);
     font-size: 10px;
     font-weight: bold;
     padding: 1px 6px;
@@ -250,7 +272,7 @@
   }
 
   .aircraft-item:hover, .aircraft-item.active {
-    background: rgba(0, 212, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .aircraft-item.active::before {
@@ -258,13 +280,13 @@
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 2px;
-    background: var(--accent);
+    background: rgba(255, 255, 255, 0.5);
   }
 
   .ac-callsign {
     font-family: var(--font-mono);
     font-size: 13px;
-    color: var(--accent);
+    color: #8ca0b0;
     letter-spacing: 1px;
     margin-bottom: 4px;
   }
@@ -286,7 +308,7 @@
   .ac-data-item { display: flex; flex-direction: column; }
   .ac-data-label { font-size: 9px; color: var(--text-dim); letter-spacing: 0.5px; margin-bottom: 1px; }
   .ac-data-val { color: var(--text); font-family: var(--font-mono); font-size: 11px; }
-  .ac-data-val.alt { color: var(--accent2); }
+  .ac-data-val.alt { color: var(--text); }
 
   /* Detail panel */
   .detail-panel {
@@ -316,7 +338,7 @@
   .detail-field-val {
     font-family: var(--font-mono);
     font-size: 12px;
-    color: var(--accent);
+    color: var(--text);
   }
 
   .no-selection {
@@ -351,7 +373,7 @@
   /* Range ring */
   .range-label {
     background: none; border: none;
-    font-family: var(--font-mono); font-size: 9px;
+    font-family: var(--font-ui); font-size: 9px;
     color: rgba(0,212,255,0.3); pointer-events: none;
   }
 
@@ -362,16 +384,17 @@
     white-space: nowrap;
   }
   .ac-map-label-inner {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 600;
     line-height: 1.3;
-    padding: 2px 4px;
+    padding: 2px 5px;
     background: rgba(7,11,15,0.75);
-    border-left: 1px solid rgba(0,212,255,0.4);
+    border-left: 2px solid rgba(255,255,255,0.25);
     color: #c8dde8;
   }
-  .ac-map-label-inner .lbl-call { color: #00d4ff; }
-  .ac-map-label-inner .lbl-alt  { color: #00ff9d; }
+  .ac-map-label-inner .lbl-call { color: #c8dde8; }
+  .ac-map-label-inner .lbl-alt  { color: #ffffff; }
 
   /* Last updated */
   .update-bar {
@@ -388,7 +411,7 @@
 
   .update-bar .refresh-btn {
     cursor: pointer;
-    color: var(--accent);
+    color: var(--text);
     letter-spacing: 1px;
     padding: 2px 6px;
     border: 1px solid var(--border);
@@ -398,7 +421,7 @@
     font-size: 9px;
     background: none;
   }
-  .update-bar .refresh-btn:hover { background: rgba(0,212,255,0.1); }
+  .update-bar .refresh-btn:hover { background: rgba(255,255,255,0.08); }
 
   #loading-overlay {
     position: absolute;
@@ -674,8 +697,8 @@ function buildAirspaceTooltip(props) {
   const lower = props.lowerLimit?.value !== undefined
     ? `${props.lowerLimit.value === 0 ? 'SFC' : props.lowerLimit.value + 'ft'}`
     : (props.lower || props.Lower || props.AL || 'SFC');
-  return `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;line-height:1.5;background:#0d1318;color:#c8dde8;padding:6px 8px;border:1px solid #1e2d3a;border-radius:2px">
-    <b style="color:#00d4ff">${name}</b><br>
+  return `<div style="font-family:'Roboto Condensed',sans-serif;font-size:11px;line-height:1.5;background:#0d1318;color:#c8dde8;padding:6px 8px;border:1px solid #1e2d3a;border-radius:2px">
+    <b style="color:#ffffff">${name}</b><br>
     ${type ? `Type: ${type}<br>` : ''}${cls ? `Class: ${cls}<br>` : ''}
     ${upper ? `Upper: ${upper}<br>` : ''}Lower: ${lower}
   </div>`;
