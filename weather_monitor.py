@@ -49,7 +49,11 @@ class WeatherMonitor:
         
     def get_connection(self):
         """Get a new database connection"""
-        return psycopg2.connect(self.database_url)
+        return psycopg2.connect(
+            self.database_url,
+            connect_timeout=10,
+            options="-c statement_timeout=30000"
+        )
         
     def init_database(self):
         """Initialize PostgreSQL database with required tables"""
@@ -242,25 +246,30 @@ class WeatherMonitor:
         
         try:
             while True:
-                self.run_once()
-                
-                # Check if we should run archive (once per day)
-                if (datetime.now() - last_archive_check).days >= 1:
-                    logger.info("Running daily cleanup...")
-                    self.cleanup_old_data()
-                    last_archive_check = datetime.now()
-                
-                # Show stats periodically
-                stats = self.get_stats()
-                logger.info(f"Stats - Active: {stats['total_captures']}, Last: {stats['last_capture']}")
-                
+                try:
+                    self.run_once()
+
+                    # Check if we should run archive (once per day)
+                    if (datetime.now() - last_archive_check).days >= 1:
+                        logger.info("Running daily cleanup...")
+                        self.cleanup_old_data()
+                        last_archive_check = datetime.now()
+
+                    # Show stats periodically
+                    stats = self.get_stats()
+                    logger.info(f"Stats - Active: {stats['total_captures']}, Last: {stats['last_capture']}")
+
+                except Exception as e:
+                    logger.error(f"Error during check cycle (will retry): {e}", exc_info=True)
+
                 logger.info(f"Waiting {interval} seconds until next check...")
                 time.sleep(interval)
-                
+
         except KeyboardInterrupt:
             logger.info("Monitoring stopped by user")
         except Exception as e:
-            logger.error(f"Unexpected error: {e}", exc_info=True)
+            logger.error(f"Fatal error: {e}", exc_info=True)
+            raise SystemExit(1)
 
 
 def main():
