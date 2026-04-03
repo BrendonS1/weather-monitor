@@ -347,27 +347,63 @@
     transition: opacity 0.5s;
   }
 
-  /* QNH input */
-  .qnh-widget {
-    display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  /* ── MOBILE ── */
+  @media (max-width: 600px) {
+    html, body { overflow: auto; }
+
+    .tracker {
+      padding: 8px;
+      gap: 8px;
+      height: auto;
+      min-height: 100vh;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      flex-wrap: wrap;
+      padding: 10px 14px;
+      gap: 8px;
+      border-radius: 12px;
+      row-gap: 8px;
+    }
+
+    /* Logo and LIVE badge share the first row */
+    .logo {
+      font-size: 16px;
+      flex: 1 1 auto;
+    }
+    .logo-sub { font-size: 11px; }
+
+    .live-badge { flex: 0 0 auto; }
+
+    /* Stats row fills full width below logo */
+    .header-stats {
+      width: 100%;
+      margin-left: 0;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .stat-item { align-items: flex-start; }
+
+    .qnh-widget input { width: 64px; font-size: 14px; }
+
+    .nav-btn { padding: 7px 12px; font-size: 12px; }
+
+    #map {
+      min-height: 55vh;
+      border-radius: 10px;
+    }
+
+    /* Sidebar appears below map when open */
+    .tracker:not(.sidebar-hidden) {
+      grid-template-columns: 1fr;
+    }
+    .tracker:not(.sidebar-hidden) .sidebar {
+      max-height: 40vh;
+    }
   }
-  .qnh-widget label {
-    font-size: 9px; color: var(--text-dim); letter-spacing: 1px;
-    font-family: var(--font-mono);
-  }
-  .qnh-widget input {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--accent2);
-    font-family: var(--font-mono);
-    font-size: 13px;
-    width: 64px;
-    text-align: center;
-    padding: 1px 4px;
-    border-radius: 2px;
-    outline: none;
-  }
-  .qnh-widget input:focus { border-color: var(--accent); }
 </style>
 </head>
 <body>
