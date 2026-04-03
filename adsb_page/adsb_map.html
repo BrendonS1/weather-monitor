@@ -435,12 +435,15 @@
 
   /* ── MOBILE ── */
   @media (max-width: 600px) {
-    html, body { overflow: hidden; height: 100%; }
+    html { overflow: hidden; height: -webkit-fill-available; height: 100dvh; }
+    body { overflow: hidden; height: 100%; }
 
     .tracker {
       padding: 6px;
       gap: 6px;
       height: 100vh;
+      height: -webkit-fill-available;
+      height: 100dvh;
       grid-template-rows: auto 1fr;
     }
 
