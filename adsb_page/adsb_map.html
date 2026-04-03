@@ -107,6 +107,26 @@
     letter-spacing: 0.5px;
   }
 
+  .logo-mobile { display: none; }
+
+  /* Theme toggle button on map */
+  #theme-toggle {
+    position: absolute;
+    top: 10px; right: 10px;
+    z-index: 800;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  #theme-toggle:hover { background: var(--surface2); }
+
   .live-badge {
     display: flex;
     align-items: center;
@@ -461,6 +481,8 @@
       min-width: 0;
     }
     .logo-sub { display: none; }
+    .logo-full { display: none; }
+    .logo-mobile { display: inline; }
 
     .live-badge { font-size: 11px; flex: 0 0 auto; }
     .live-dot { width: 6px; height: 6px; }
@@ -502,7 +524,7 @@
 <div class="tracker sidebar-hidden">
   <header>
     <div class="logo">
-      🛩️ North Shore ADS-B
+      🛩️ <span class="logo-full">North Shore ADS-B</span><span class="logo-mobile">ADSB</span>
       <span class="logo-sub">NZNE · North Shore Aero Club</span>
     </div>
     <div class="live-badge"><div class="live-dot"></div>LIVE</div>
@@ -522,6 +544,7 @@
   </header>
 
   <div id="map">
+    <button id="theme-toggle" onclick="toggleMapTheme()">◑ THEME</button>
     <div id="loading-overlay">INITIALISING RADAR ···</div>
     <div class="api-banner" id="api-banner" style="display:none">
       ⚠ INSERT YOUR ADSB EXCHANGE API KEY — see config at top of script
@@ -586,12 +609,30 @@ const map = L.map('map', {
   attributionControl: true,
 });
 
-// Dark tile layer (CartoDB Dark Matter)
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© OpenStreetMap © CARTO',
-  subdomains: 'abcd',
-  maxZoom: 19,
-}).addTo(map);
+// Tile layers
+const tileLayers = {
+  dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19,
+  }),
+  light: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19,
+  }),
+};
+let activeTheme = 'dark';
+tileLayers.dark.addTo(map);
+
+function toggleMapTheme() {
+  const next = activeTheme === 'dark' ? 'light' : 'dark';
+  map.removeLayer(tileLayers[activeTheme]);
+  tileLayers[next].addTo(map);
+  if (airspaceLayer) airspaceLayer.bringToBack();
+  activeTheme = next;
+  document.getElementById('theme-toggle').textContent = next === 'dark' ? '◑ THEME' : '◐ THEME';
+}
 
 // Airfield marker
 const airfieldIcon = L.divIcon({
