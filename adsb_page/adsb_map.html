@@ -435,54 +435,54 @@
 
   /* ── MOBILE ── */
   @media (max-width: 600px) {
-    html, body { overflow: auto; }
+    html, body { overflow: hidden; height: 100%; }
 
     .tracker {
-      padding: 8px;
-      gap: 8px;
-      height: auto;
-      min-height: 100vh;
+      padding: 6px;
+      gap: 6px;
+      height: 100vh;
       grid-template-rows: auto 1fr;
     }
 
     header {
-      flex-wrap: wrap;
-      padding: 10px 14px;
-      gap: 8px;
-      border-radius: 12px;
-      row-gap: 8px;
-    }
-
-    /* Logo and LIVE badge share the first row */
-    .logo {
-      font-size: 16px;
-      flex: 1 1 auto;
-    }
-    .logo-sub { font-size: 11px; }
-
-    .live-badge { flex: 0 0 auto; }
-
-    /* Stats row fills full width below logo */
-    .header-stats {
-      width: 100%;
-      margin-left: 0;
-      flex-wrap: wrap;
-      gap: 8px;
+      flex-wrap: nowrap;
+      padding: 7px 10px;
+      gap: 6px;
+      border-radius: 10px;
       align-items: center;
     }
 
-    .stat-item { align-items: flex-start; }
+    .logo {
+      font-size: 14px;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .logo-sub { display: none; }
 
-    .qnh-widget input { width: 64px; font-size: 14px; }
+    .live-badge { font-size: 11px; flex: 0 0 auto; }
+    .live-dot { width: 6px; height: 6px; }
 
-    .nav-btn { padding: 7px 12px; font-size: 12px; }
+    .header-stats {
+      margin-left: 0;
+      gap: 6px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .stat-item { align-items: flex-end; }
+    .stat-label { display: none; }
+    .stat-value { font-size: 14px; }
+
+    .qnh-widget label { display: none; }
+    .qnh-widget input { width: 58px; font-size: 13px; padding: 2px 4px; }
+
+    #sidebar-toggle { display: none; }
+
+    .nav-btn { padding: 5px 10px; font-size: 12px; }
 
     #asp-legend { display: none !important; }
 
-    #map {
-      min-height: 55vh;
-      border-radius: 10px;
-    }
+    #map { border-radius: 10px; }
 
     /* Sidebar appears below map when open */
     .tracker:not(.sidebar-hidden) {
