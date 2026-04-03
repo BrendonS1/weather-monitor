@@ -432,6 +432,69 @@
     color: var(--accent); letter-spacing: 3px;
     transition: opacity 0.5s;
   }
+
+  /* ── MOBILE ── */
+  @media (max-width: 600px) {
+    html { overflow: hidden; height: -webkit-fill-available; height: 100dvh; }
+    body { overflow: hidden; height: 100%; }
+
+    .tracker {
+      padding: 6px;
+      gap: 6px;
+      height: 100vh;
+      height: -webkit-fill-available;
+      height: 100dvh;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      flex-wrap: nowrap;
+      padding: 7px 10px;
+      gap: 6px;
+      border-radius: 10px;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 14px;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .logo-sub { display: none; }
+
+    .live-badge { font-size: 11px; flex: 0 0 auto; }
+    .live-dot { width: 6px; height: 6px; }
+
+    .header-stats {
+      margin-left: 0;
+      gap: 6px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .stat-item { align-items: flex-end; }
+    .stat-label { display: none; }
+    .stat-value { font-size: 14px; }
+
+    .qnh-widget label { display: none; }
+    .qnh-widget input { width: 58px; font-size: 13px; padding: 2px 4px; }
+
+    #sidebar-toggle { display: none; }
+
+    .nav-btn { padding: 5px 10px; font-size: 12px; }
+
+    #asp-legend { display: none !important; }
+
+    #map { border-radius: 10px; }
+
+    /* Sidebar appears below map when open */
+    .tracker:not(.sidebar-hidden) {
+      grid-template-columns: 1fr;
+    }
+    .tracker:not(.sidebar-hidden) .sidebar {
+      max-height: 40vh;
+    }
+  }
 </style>
 </head>
 <body>
@@ -454,6 +517,7 @@
       </div>
       <button id="sidebar-toggle" class="nav-btn inactive" onclick="toggleSidebar()">☰ Traffic</button>
       <button id="asp-toggle" class="nav-btn" onclick="toggleAirspace()">Airspace</button>
+      <a href="/" class="nav-btn">← Back</a>
     </div>
   </header>
 
