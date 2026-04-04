@@ -5,7 +5,10 @@
       "Bash(Select-String \"weather_update|INSERT INTO weather_update|def.*parse|def.*store\")",
       "Bash(powershell -Command \"Set-Location ''D:\\\\Development\\\\weather-monitor''; git log --all --oneline --follow -- weather_monitor.py\")",
       "Bash(\"D:/Development/weather-monitor/venv/Scripts/python.exe\":*)",
-      "Bash(ls D:/Development/weather-monitor/*.py D:/Development/weather-monitor/*.toml D:/Development/weather-monitor/*.json D:/Development/weather-monitor/Procfile)"
+      "Bash(ls D:/Development/weather-monitor/*.py D:/Development/weather-monitor/*.toml D:/Development/weather-monitor/*.json D:/Development/weather-monitor/Procfile)",
+      "WebSearch",
+      "WebFetch(domain:www.adsbexchange.com)",
+      "WebFetch(domain:rapidapi.com)"
     ]
   }
 }

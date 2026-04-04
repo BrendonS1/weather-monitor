@@ -524,7 +524,7 @@
 <div class="tracker sidebar-hidden">
   <header>
     <div class="logo">
-      🛩️ <span class="logo-full">North Shore ADS-B</span><span class="logo-mobile">ADSB</span>
+      <span class="logo-full">Live ADSB Map</span><span class="logo-mobile">ADSB</span>
       <span class="logo-sub">NZNE · North Shore Aero Club</span>
     </div>
     <div class="live-badge"><div class="live-dot"></div>LIVE</div>
@@ -909,7 +909,8 @@ async function fetchFlights() {
   }
 
   try {
-    const url = `${CONFIG.proxyBase}/api/adsb?lat=${CONFIG.lat}&lon=${CONFIG.lon}&dist=${CONFIG.radiusNM}`;
+    const centre = map.getCenter();
+    const url = `${CONFIG.proxyBase}/api/adsb?lat=${centre.lat}&lon=${centre.lng}&dist=${CONFIG.radiusNM}`;
     const res = await fetch(url);
     const json = await res.json();
     if (json.error) { console.error('ADS-B proxy error:', json.error); return; }
