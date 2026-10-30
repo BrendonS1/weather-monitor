@@ -104,6 +104,12 @@
   table.hl td { font-size: 20px; }
   table.hl td.na { color: var(--muted); }
   table.hl td small { font-size: 13px; font-weight: 600; color: var(--muted); margin-left: 4px; }
+  table.hl td { white-space: nowrap; }
+  @media (max-width: 480px) {
+    table.hl td { font-size: 17px; }
+    table.hl th[scope="row"] { font-size: 13px; padding-right: 8px; }
+    table.hl td small { display: block; margin-left: 0; font-size: 12px; }
+  }
 
   /* Cameras */
   .cams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -265,24 +271,6 @@
 
   <hr>
 
-  <section aria-labelledby="hl-h" style="display:flex;flex-direction:column;gap:12px">
-    <h2 id="hl-h">Highs and lows</h2>
-    <div class="table-scroll">
-      <table class="hl">
-        <thead><tr><td></td><th scope="col" class="lbl">Today</th><th scope="col" class="lbl">Month</th><th scope="col" class="lbl">Year</th></tr></thead>
-        <tbody>
-          <tr><th scope="row" class="lbl">Max temp</th><td class="num" id="hTmaxD">--</td><td class="num" id="hTmaxM">--</td><td class="num" id="hTmaxY">--</td></tr>
-          <tr><th scope="row" class="lbl">Min temp</th><td class="num" id="hTminD">--</td><td class="num na">–</td><td class="num na">–</td></tr>
-          <tr><th scope="row" class="lbl">Max wind</th><td class="num" id="hWD">--</td><td class="num" id="hWM">--</td><td class="num na">–</td></tr>
-          <tr><th scope="row" class="lbl">Rain</th><td class="num" id="hRD">--</td><td class="num" id="hRM">--</td><td class="num na">–</td></tr>
-          <tr><th scope="row" class="lbl">Pressure</th><td class="num" id="hPD">--</td><td class="num na">–</td><td class="num na">–</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <hr>
-
   <section aria-labelledby="cam-h" style="display:flex;flex-direction:column;gap:12px">
     <h2 id="cam-h">Cameras and radar</h2>
     <div class="cams" id="cams">
@@ -292,6 +280,25 @@
       </a>
     </div>
     <p class="note" id="camNote" hidden>Camera images are more than 15 minutes old, so they're hidden.</p>
+  </section>
+
+  <hr>
+
+  <section aria-labelledby="hl-h" style="display:flex;flex-direction:column;gap:12px">
+    <h2 id="hl-h">Highs and lows</h2>
+    <div class="table-scroll">
+      <table class="hl">
+        <thead><tr><td></td><th scope="col" class="lbl">Today</th><th scope="col" class="lbl">Month</th><th scope="col" class="lbl">Year</th></tr></thead>
+        <tbody>
+          <tr><th scope="row" class="lbl">Max temp</th><td class="num" id="hTmaxD">--</td><td class="num" id="hTmaxM">--</td><td class="num" id="hTmaxY">--</td></tr>
+          <tr><th scope="row" class="lbl">Min temp</th><td class="num" id="hTminD">--</td><td class="num na" id="hTminM">–</td><td class="num na" id="hTminY">–</td></tr>
+          <tr><th scope="row" class="lbl">Max wind (kt)</th><td class="num" id="hWD">--</td><td class="num" id="hWM">--</td><td class="num na" id="hWY">–</td></tr>
+          <tr><th scope="row" class="lbl">Rain (mm)</th><td class="num" id="hRD">--</td><td class="num" id="hRM">--</td><td class="num na" id="hRY">–</td></tr>
+          <tr><th scope="row" class="lbl">Pressure (hPa)</th><td class="num" id="hPD">--</td><td class="num na" id="hPM">–</td><td class="num na" id="hPY">–</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note" id="hlNote">Pressure is high/low.</p>
   </section>
 
   <hr>
@@ -316,13 +323,14 @@
   const CAM_URL = PROXY_URL + 'http://weather.nsac.co.nz/cams/CamInfo.txt';
   const WIND_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app/api/wind-history';
   const PRESSURE_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app/api/pressure-history';
+  const RECORDS_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app/api/records';
   const UPDATE_INTERVAL = 60000;
   const RUNWAYS = [{ id: '03', hdg: 30 }, { id: '21', hdg: 210 }];
   const VARIATION = 19; // true to magnetic
 
   // Shares cache keys with the current site so a visit to either warms both.
-  const CACHE = { data: 'nzne_weather_cache', wind: 'nzne_wind_cache', press: 'nzne_pressure_cache' };
-  const CACHE_TTL = { data: 4 * 3600e3, wind: 30 * 60e3, press: 30 * 60e3 };
+  const CACHE = { data: 'nzne_weather_cache', wind: 'nzne_wind_cache', press: 'nzne_pressure_cache', records: 'nzne_records_cache' };
+  const CACHE_TTL = { data: 4 * 3600e3, wind: 30 * 60e3, press: 30 * 60e3, records: 6 * 3600e3 };
 
   const $ = (id) => document.getElementById(id);
   const set = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
@@ -500,15 +508,17 @@
     set('cTodaySub', `High ${hhmm(data.tempdmt)}, low ${hhmm(data.tempdmint)}`);
 
     // Highs and lows
+    lastStation = data;
     $('hTmaxD').innerHTML = `${r(data.tempdm)}°<small>${hhmm(data.tempdmt)}</small>`;
     $('hTminD').innerHTML = `${r(data.tempdmin)}°<small>${hhmm(data.tempdmint)}</small>`;
     set('hTmaxM', `${r(data.tempmm)}°`);
     set('hTmaxY', `${r(data.tempym)}°`);
-    set('hWD', `${data.winddm} kt`);
-    set('hWM', `${data.windmm} kt`);
-    set('hRD', `${data.rainds} mm`);
-    set('hRM', `${data.rainms} mm`);
+    set('hWD', `${data.winddm}`);
+    set('hWM', `${data.windmm}`);
+    set('hRD', `${data.rainds}`);
+    set('hRM', `${data.rainms}`);
     set('hPD', `${r(data.pressdm)}/${r(data.pressdmin)}`);
+    fillFromLog();
 
     // Direction chart uses the per-minute trend in this payload
     renderDirChart(trendM);
@@ -516,6 +526,57 @@
 
     const now = new Date();
     set('footer', `North Shore Airport (NZNE) weather station. Page refreshed at ${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}.`);
+  }
+
+  // ---------- Highs and lows the station feed doesn't provide ----------
+  // The station gives today's figures plus month/year max temp, month max
+  // wind and month rain. Everything else comes from the logged history
+  // (/api/records). Station values win wherever both exist.
+  let lastStation = null;
+  let records = null;
+
+  function fillCell(id, value) {
+    const cell = $(id);
+    if (!cell) return;
+    cell.textContent = value == null ? '–' : value;
+    cell.classList.toggle('na', value == null);
+  }
+
+  function stationNum(key) {
+    if (!lastStation) return null;
+    const v = parseFloat(lastStation[key]);
+    return isFinite(v) ? v : null;
+  }
+
+  function fillFromLog() {
+    if (!records) return;
+    const m = records.month || {}, y = records.year || {};
+    const deg = (v) => v == null ? null : `${r(v)}°`;
+    const range = (hi, lo) => hi == null || lo == null ? null : `${r(hi)}/${r(lo)}`;
+
+    fillCell('hTminM', deg(m.min_temp));
+    fillCell('hTminY', deg(y.min_temp));
+    fillCell('hWY', y.max_wind == null ? null : `${r(Math.max(y.max_wind, stationNum('windmm') ?? -1))}`);
+    fillCell('hRY', y.rain == null ? null : y.rain.toFixed(1));
+    fillCell('hPM', range(m.max_press, m.min_press));
+    fillCell('hPY', range(y.max_press, y.min_press));
+    // Only fill these from the log if the station feed is missing them.
+    if (stationNum('tempym') == null && y.max_temp != null) fillCell('hTmaxY', deg(y.max_temp));
+    if (stationNum('windmm') == null && m.max_wind != null) fillCell('hWM', `${r(m.max_wind)}`);
+
+    let note = 'Pressure is high/low. Month and year minimums, year wind and rain, and the pressure range come from the station log.';
+    const first = records.first_sample ? new Date(records.first_sample) : null;
+    const yearStart = records.year_start ? new Date(records.year_start) : null;
+    if (first && yearStart && first - yearStart > 2 * 86400e3) {
+      note += ` The log starts on ${first.toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', timeZone: 'Pacific/Auckland' })}, so this year's figures cover from then.`;
+    }
+    set('hlNote', note);
+  }
+
+  function renderRecords(data) {
+    if (!data || !data.year) return;
+    records = data;
+    fillFromLog();
   }
 
   async function fetchWeather() {
@@ -638,9 +699,9 @@
     const Y = (v) => (H * (hi - v) / (hi - lo)).toFixed(1);
     const stepV = hi - lo > 8 ? 4 : hi - lo > 4 ? 2 : 1;
     for (let v = Math.ceil(lo / stepV) * stepV; v <= hi; v += stepV) yTick(svg, +Y(v), v, true);
-    svg.append(el('polyline', { points: ok.map(i => `${X(hrs[i])},${Y(vals[i])}`).join(' '), fill: 'none', stroke: '#3F4A44', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }));
+    svg.append(el('polyline', { points: ok.map(i => `${X(hrs[i])},${Y(vals[i])}`).join(' '), fill: 'none', stroke: '#007E33', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }));
     const li = ok.reduce((a, b) => hrs[a] < hrs[b] ? a : b);
-    svg.append(el('circle', { cx: X(hrs[li]), cy: Y(vals[li]), r: 4.5, fill: '#3F4A44' }));
+    svg.append(el('circle', { cx: X(hrs[li]), cy: Y(vals[li]), r: 4.5, fill: '#007E33' }));
     axisLabels(svg, `${r(span)} h ago`, 'Now');
     set('pressCap', `Pressure, last ${r(span)} hours (hPa)`);
     svg.setAttribute('aria-label', `Pressure over the last ${r(span)} hours, from ${vmin.toFixed(1)} to ${vmax.toFixed(1)} hectopascals, now ${vals[li].toFixed(1)}`);
@@ -701,11 +762,13 @@
   if (cachedData) render(cachedData);
   const cw = cacheGet('wind'); if (cw) renderWindChart(cw);
   const cp = cacheGet('press'); if (cp) renderPressChart(cp);
+  const cr = cacheGet('records'); if (cr) renderRecords(cr);
 
   function tick() {
     fetchWeather();
     fetchJSONInto(WIND_API_URL, 'wind', renderWindChart);
     fetchJSONInto(PRESSURE_API_URL, 'press', renderPressChart);
+    fetchJSONInto(RECORDS_API_URL, 'records', renderRecords);
     fetchNotice();
     fetchCameras();
   }
