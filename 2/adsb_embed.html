@@ -228,9 +228,12 @@ function getAirspaceStyle(props) {
 
 async function loadAirspace() {
   try {
-    const gcsUrl = 'https://storage.googleapis.com/29f98e10-a489-4c82-ae5e-489dbcd4912f/nz_asp.geojson';
+    // openAIP nightly export (moved from the Google bucket, which became Requester Pays in July 2026)
+    const gcsUrl = 'https://s3.openaip.net/openaip-system-exports/nz_asp.geojson';
     const res = await fetch(`${PROXY}/?url=${encodeURIComponent(gcsUrl)}`);
+    if (!res.ok) throw new Error(`airspace file returned ${res.status}`);
     const geojson = await res.json();
+    if (!Array.isArray(geojson.features)) throw new Error('airspace file has no features');
     L.geoJSON(geojson, {
       filter: f => {
         const n = normalizeAspName(f.properties.name || f.properties.Name || f.properties.AN || '');
