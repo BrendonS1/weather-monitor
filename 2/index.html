@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>North Shore Airport Weather</title>
+<meta name="theme-color" content="#007E33">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15' fill='%23007E33'/><path d='M16 5v18' stroke='white' stroke-width='3' stroke-linecap='round'/><path d='M10 19l6 8 6-8z' fill='white'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #007E33;
+    --green-dark: #00662A;
+    --green-bright: #00B84D;
+    --paper: #F3F6F4;
+    --tint: #E3EEE6;
+    --line: #D3DED7;
+    --ink: #1A1A1A;
+    --muted: #555F59;
+    --runway: #3F4A44;
+    --gust: #F08A00;
+    --gust-fill: #FBD49E;
+    --gust-text: #9A5200;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: 'Roboto Condensed', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 16px; line-height: 1.4;
+  }
+  a { color: var(--green-dark); }
+  a:hover { color: var(--ink); }
+  :focus-visible { outline: 3px solid var(--green-bright); outline-offset: 2px; }
+  h1, h2, p { margin: 0; }
+  h2 { font-size: 20px; font-weight: 700; }
+  .lbl { font-size: 14px; font-weight: 600; color: var(--muted); }
+  .num { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .note { font-size: 14px; color: var(--muted); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 20px; }
+
+  /* Header */
+  .masthead { background: var(--green); color: #fff; }
+  .masthead .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 24px; padding-top: 16px; padding-bottom: 16px; }
+  .masthead h1 { font-size: 26px; font-weight: 800; line-height: 1.1; }
+  .masthead .sub { font-size: 15px; font-weight: 600; opacity: 0.92; }
+  .masthead .status { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #7CF0A6; display: inline-block; }
+  .dot.off { background: #FFB4A8; }
+  .masthead nav { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+  .masthead nav a { color: #fff; font-size: 15px; font-weight: 600; padding: 6px 0; }
+
+  main.wrap { display: flex; flex-direction: column; gap: 28px; padding-top: 20px; padding-bottom: 40px; }
+  .metar { font-size: 20px; background: var(--tint); padding: 12px 16px; border-radius: 4px; }
+  .banner { background: #FDE7D2; color: #6B3A00; padding: 12px 16px; border-radius: 4px; font-weight: 600; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .col { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+
+  /* Wind */
+  .instrument { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
+  .readout { text-align: center; display: flex; flex-direction: column; gap: 4px; }
+  .readout .big { font-size: 56px; line-height: 1; color: var(--green); }
+  .readout .big small { font-size: 24px; }
+  .readout .gust { font-size: 18px; font-weight: 600; }
+  .gusty { color: var(--gust-text); }
+
+  .runway { display: flex; align-items: center; gap: 20px; }
+  .rwy-num { font-size: 52px; line-height: 1; background: var(--runway); color: #fff; padding: 10px 14px; border-radius: 4px; min-width: 2.2em; text-align: center; }
+  .comp { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 16px; }
+  .comp strong { font-size: 24px; }
+  .comp .warn { color: var(--gust-text); }
+
+  /* Conditions */
+  .cond { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; }
+  .cond > div { display: flex; flex-direction: column; gap: 3px; }
+  .cond .num { font-size: 32px; line-height: 1.1; }
+  .cond .sub { font-size: 15px; }
+
+  /* Charts */
+  .charts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  figure svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; font-weight: 600; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw-line { width: 16px; height: 3px; background: var(--green); display: inline-block; }
+  .sw-band { width: 16px; height: 9px; background: var(--gust-fill); display: inline-block; }
+  .awib { background: var(--tint); padding: 12px 14px; border-radius: 4px; font-size: 16px; line-height: 1.5; }
+  .freqs { display: flex; flex-wrap: wrap; gap: 12px 32px; }
+  .freqs .num { font-size: 26px; }
+
+  /* Traffic */
+  .traffic-frame { position: relative; border-radius: 4px; overflow: hidden; background: #1B1E21; height: 300px; }
+  .traffic-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+  /* Highs and lows */
+  .table-scroll { overflow-x: auto; }
+  table.hl { border-collapse: collapse; width: 100%; min-width: 320px; }
+  table.hl th, table.hl td { text-align: left; padding: 9px 10px 9px 0; border-top: 1px solid var(--line); vertical-align: baseline; }
+  table.hl thead th, table.hl thead td { border-top: 0; padding-bottom: 6px; }
+  table.hl td { font-size: 20px; }
+  table.hl td.na { color: var(--muted); }
+  table.hl td small { font-size: 13px; font-weight: 600; color: var(--muted); margin-left: 4px; }
+
+  /* Cameras */
+  .cams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .cam { display: flex; flex-direction: column; gap: 6px; color: var(--ink); text-decoration: none; }
+  .cam img, .cam .ph { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 4px; background: var(--line); display: block; }
+  .cam span { font-size: 15px; font-weight: 600; }
+
+  details { font-size: 15px; line-height: 1.55; }
+  summary { cursor: pointer; font-weight: 600; padding: 10px 0; }
+  details p { margin-bottom: 8px; max-width: 72ch; }
+  footer { font-size: 14px; color: var(--muted); }
+
+  .skel { color: transparent !important; background: var(--line); border-radius: 4px; }
+
+  @media (min-width: 720px) {
+    .wrap { padding: 0 32px; }
+    .cond { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; }
+    .cams { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+    .table-scroll { max-width: 680px; }
+    .traffic-frame { height: 380px; }
+    .metar { font-size: 24px; }
+  }
+  @media (min-width: 1040px) {
+    .layout { grid-template-columns: minmax(360px, 420px) minmax(0, 1fr); gap: 56px; align-items: start; }
+    .masthead h1 { font-size: 34px; }
+    .readout .big { font-size: 64px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    #windArrow { transition: transform 600ms ease; }
+  }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap">
+    <div>
+      <h1>North Shore</h1>
+      <span class="sub">NZNE weather station, elevation 212 ft</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px">
+      <span class="status"><span class="dot" id="liveDot"></span><span id="updated">Loading</span></span>
+      <nav aria-label="More">
+        <a href="/stats.html">Historic statistics</a>
+        <a href="https://serve-frontend-production.up.railway.app/query_page/query.html">Query the database</a>
+        <a href="/">Current site</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="metar num" id="metar" aria-live="polite">NZNE</p>
+  <p class="banner" id="staleBanner" hidden>The station hasn't reported for over 15 minutes. Values below are blanked until it does.</p>
+
+  <div class="layout">
+    <section class="col" aria-label="Wind and favoured runway">
+      <svg class="instrument" viewBox="0 0 320 320" role="img" id="instrument" aria-label="Wind instrument">
+        <circle cx="160" cy="160" r="150" fill="#E3EEE6"/>
+        <circle cx="160" cy="160" r="140" fill="none" stroke="#00662A" stroke-width="8" stroke-dasharray="1.2 23.235" opacity="0.45"/>
+        <circle cx="160" cy="160" r="140" fill="none" stroke="#00662A" stroke-width="14" stroke-dasharray="2.4 70.904"/>
+        <g font-size="14" font-weight="700" fill="#00662A" text-anchor="middle" dominant-baseline="middle">
+          <text x="160" y="42">N</text><text x="278" y="160">E</text><text x="160" y="278">S</text><text x="42" y="160">W</text>
+        </g>
+        <g transform="rotate(90 160 160)">
+          <rect x="152" y="88" width="16" height="144" rx="2" fill="#B9C6BE"/>
+          <text x="160" y="222" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="700" fill="#1A1A1A">09</text>
+          <text x="160" y="98" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="700" fill="#1A1A1A" transform="rotate(180 160 98)">27</text>
+        </g>
+        <g transform="rotate(30 160 160)">
+          <rect x="149" y="52" width="22" height="216" rx="2" fill="#3F4A44"/>
+          <line x1="160" y1="76" x2="160" y2="244" stroke="#F3F6F4" stroke-width="1.5" stroke-dasharray="8 7"/>
+          <text x="160" y="258" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="700" fill="#fff">03</text>
+          <text x="160" y="62" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="700" fill="#fff" transform="rotate(180 160 62)">21</text>
+        </g>
+        <path id="varArc" d="" fill="none" stroke="#F08A00" stroke-width="7" stroke-linecap="round"/>
+        <g id="windArrow" style="transform-origin:160px 160px" visibility="hidden">
+          <circle cx="160" cy="16" r="5" fill="#007E33"/>
+          <line x1="160" y1="16" x2="160" y2="110" stroke="#007E33" stroke-width="5" stroke-linecap="round"/>
+          <polygon points="160,130 147,104 173,104" fill="#007E33"/>
+        </g>
+      </svg>
+
+      <div class="readout">
+        <p class="big num" id="windBig">&nbsp;</p>
+        <p class="gust" id="windGust">&nbsp;</p>
+        <p class="lbl">Degrees magnetic, 2 minute average</p>
+      </div>
+
+      <hr>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <h2>Favoured runway</h2>
+        <div class="runway">
+          <span class="rwy-num num" id="rwyNum">--</span>
+          <div class="comp">
+            <span class="lbl" id="alongLbl">Headwind</span>
+            <span class="lbl">Crosswind</span>
+            <strong class="num" id="alongVal">--</strong>
+            <strong class="num" id="crossVal">--</strong>
+            <span class="lbl gusty" id="alongGust"></span>
+            <span class="lbl gusty" id="crossGust"></span>
+          </div>
+        </div>
+        <p class="note">Expect turbulence and wind shear on the runway 21 approach in south to north-west winds.</p>
+      </div>
+    </section>
+
+    <div class="col">
+      <section aria-labelledby="cond-h" style="display:flex;flex-direction:column;gap:14px">
+        <h2 id="cond-h">Conditions</h2>
+        <div class="cond">
+          <div><span class="lbl">Pressure (MSL)</span><span class="num" id="cPress">--</span><span class="sub" id="cPressSub">&nbsp;</span></div>
+          <div><span class="lbl">Temperature / dew point</span><span class="num" id="cTemp">--</span><span class="sub" id="cTempSub">&nbsp;</span></div>
+          <div><span class="lbl">Cloud base, estimated</span><span class="num" id="cCloud">--</span><span class="sub" id="cCloudSub">&nbsp;</span></div>
+          <div><span class="lbl">Density altitude</span><span class="num" id="cDA">--</span><span class="sub">Field elevation 212 ft</span></div>
+          <div><span class="lbl">Rain today</span><span class="num" id="cRain">--</span><span class="sub" id="cRainSub">&nbsp;</span></div>
+          <div><span class="lbl">Today</span><span class="num" id="cToday">--</span><span class="sub" id="cTodaySub">&nbsp;</span></div>
+        </div>
+        <p class="note">MSL pressure is not a certified QNH source. Cloud base and density altitude are estimates.</p>
+      </section>
+
+      <hr>
+
+      <section aria-labelledby="trend-h" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
+          <h2 id="trend-h">Trends</h2>
+          <span class="legend"><span><span class="sw-line"></span>Average wind</span><span><span class="sw-band"></span>Gusts</span></span>
+        </div>
+        <div class="charts">
+          <figure><figcaption class="lbl">Wind strength, last hour (kt)</figcaption><svg id="windChart" viewBox="-28 -8 372 170" role="img" aria-label="Wind strength chart, loading"></svg></figure>
+          <figure><figcaption class="lbl">Wind direction, recent minutes (°M)</figcaption><svg id="dirChart" viewBox="-30 -8 374 170" role="img" aria-label="Wind direction chart, loading"></svg></figure>
+          <figure><figcaption class="lbl" id="pressCap">Pressure (hPa)</figcaption><svg id="pressChart" viewBox="-38 -8 378 170" role="img" aria-label="Pressure chart, loading"></svg></figure>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <span class="lbl">AWIB and radio</span>
+            <p class="awib" id="awib" hidden></p>
+            <div class="freqs">
+              <div style="display:flex;flex-direction:column;gap:2px"><span class="lbl">AWIB broadcast</span><span class="num">130.45</span></div>
+              <div style="display:flex;flex-direction:column;gap:2px"><span class="lbl">North Shore Base</span><span class="num">118.00</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <hr>
+
+  <section aria-labelledby="traffic-h" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
+      <h2 id="traffic-h">Traffic</h2>
+      <a href="/adsb_page/adsb_map.html" class="lbl" style="color:var(--green-dark)">Open the full traffic map</a>
+    </div>
+    <div class="traffic-frame">
+      <iframe src="/2/adsb_embed.html" title="ADS-B traffic map around North Shore" loading="lazy"></iframe>
+    </div>
+    <p class="note">ADS-B traffic within 60 nm. Labels show callsign and altitude in hundreds of feet. Not for separation.</p>
+  </section>
+
+  <hr>
+
+  <section aria-labelledby="hl-h" style="display:flex;flex-direction:column;gap:12px">
+    <h2 id="hl-h">Highs and lows</h2>
+    <div class="table-scroll">
+      <table class="hl">
+        <thead><tr><td></td><th scope="col" class="lbl">Today</th><th scope="col" class="lbl">Month</th><th scope="col" class="lbl">Year</th></tr></thead>
+        <tbody>
+          <tr><th scope="row" class="lbl">Max temp</th><td class="num" id="hTmaxD">--</td><td class="num" id="hTmaxM">--</td><td class="num" id="hTmaxY">--</td></tr>
+          <tr><th scope="row" class="lbl">Min temp</th><td class="num" id="hTminD">--</td><td class="num na">–</td><td class="num na">–</td></tr>
+          <tr><th scope="row" class="lbl">Max wind</th><td class="num" id="hWD">--</td><td class="num" id="hWM">--</td><td class="num na">–</td></tr>
+          <tr><th scope="row" class="lbl">Rain</th><td class="num" id="hRD">--</td><td class="num" id="hRM">--</td><td class="num na">–</td></tr>
+          <tr><th scope="row" class="lbl">Pressure</th><td class="num" id="hPD">--</td><td class="num na">–</td><td class="num na">–</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr>
+
+  <section aria-labelledby="cam-h" style="display:flex;flex-direction:column;gap:12px">
+    <h2 id="cam-h">Cameras and radar</h2>
+    <div class="cams" id="cams">
+      <a class="cam" href="https://www.metservice.com/maps-radar/rain/radar/auckland?range=120&amp;tab=real-time" target="_blank" rel="noopener" id="radar">
+        <img src="https://www.metservice.com/publicData/rainRadar/image/Auckland/120K/" alt="Auckland rain radar" loading="lazy" style="object-position:50% 85%">
+        <span>Auckland rain radar</span>
+      </a>
+    </div>
+    <p class="note" id="camNote" hidden>Camera images are more than 15 minutes old, so they're hidden.</p>
+  </section>
+
+  <hr>
+
+  <details>
+    <summary>About this station</summary>
+    <p>The sensors sit on the runway 21 windsock mast, about 65 m east of the threshold. The AWIB on 130.45 MHz broadcasts time, wind, gusts, MSL pressure, temperature, dew point and other messages. Report AWIB issues to the flight office or North Shore Base on 118.00 MHz.</p>
+    <p>Turbulence and wind shear can be expected in south-west to north-west winds on the runway 21 approach, including mechanical turbulence from nearby buildings and trees. More about operating here: <a href="http://www.northshoreairport.co.nz/arriving-by-aircraft/" target="_blank" rel="noopener">Arriving at North Shore Airport</a>. Station details: <a href="http://weather.nsac.co.nz/NEmetinf.htm" target="_blank" rel="noopener">station information</a>.</p>
+  </details>
+
+  <footer id="footer">North Shore Airport (NZNE) weather station.</footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Configuration ----------
+  const PROXY_URL = 'https://weather-monitor-proxy-production.up.railway.app/?url=';
+  const DATA_URL = PROXY_URL + 'http://weather.nsac.co.nz/NEmetData.txt';
+  const NOTICE_URL = PROXY_URL + 'http://weather.nsac.co.nz/awibexport.txt';
+  const CAM_URL = PROXY_URL + 'http://weather.nsac.co.nz/cams/CamInfo.txt';
+  const WIND_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app/api/wind-history';
+  const PRESSURE_API_URL = 'https://weather-monitor-wind-api-production.up.railway.app/api/pressure-history';
+  const UPDATE_INTERVAL = 60000;
+  const RUNWAYS = [{ id: '03', hdg: 30 }, { id: '21', hdg: 210 }];
+  const VARIATION = 19; // true to magnetic
+
+  // Shares cache keys with the current site so a visit to either warms both.
+  const CACHE = { data: 'nzne_weather_cache', wind: 'nzne_wind_cache', press: 'nzne_pressure_cache' };
+  const CACHE_TTL = { data: 4 * 3600e3, wind: 30 * 60e3, press: 30 * 60e3 };
+
+  const $ = (id) => document.getElementById(id);
+  const set = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const r = Math.round;
+
+  function cacheGet(kind) {
+    try {
+      const raw = localStorage.getItem(CACHE[kind]);
+      if (!raw) return null;
+      const { data, timestamp } = JSON.parse(raw);
+      return Date.now() - timestamp < CACHE_TTL[kind] ? data : null;
+    } catch (e) { return null; }
+  }
+  function cachePut(kind, data) {
+    try { localStorage.setItem(CACHE[kind], JSON.stringify({ data, timestamp: Date.now() })); } catch (e) {}
+  }
+
+  // ---------- Helpers ----------
+  const t2m = (degT) => ((degT - VARIATION) % 360 + 360) % 360;
+  function fmtDir(dir) {
+    let i = 10 * r(dir / 10);
+    if (i === 0) i = 360;
+    if (i > 360) i -= 360;
+    return String(i).padStart(3, '0');
+  }
+  const relAngle = (a, b) => ((a - b) % 360 + 540) % 360 - 180; // signed, -180..180
+
+  function nzZone(y, m, d) {
+    // NZ daylight saving: last Sunday of September to first Sunday of April.
+    const date = new Date(y, m - 1, d);
+    const firstSunApr = new Date(y, 3, 1 + (7 - new Date(y, 3, 1).getDay()) % 7);
+    const lastSunSep = new Date(y, 8, 30 - new Date(y, 8, 30).getDay());
+    return (date < firstSunApr || date >= lastSunSep) ? 'NZDT' : 'NZST';
+  }
+
+  // Direction spread from recent samples: returns [from, to] clockwise, or null.
+  function dirRange(vals) {
+    if (vals.length < 2) return null;
+    const hits = new Array(360).fill(0);
+    vals.forEach(v => { hits[((r(v) % 360) + 360) % 360]++; });
+    let maxGap = 0, gapEnd = 0, cur = 0;
+    for (let i = 0; i < 720; i++) {
+      if (hits[i % 360] === 0) { cur++; if (cur > maxGap) { maxGap = cur; gapEnd = i % 360; } }
+      else cur = 0;
+    }
+    if (maxGap < 120 || maxGap > 359) return null;
+    const from = (gapEnd + 1) % 360;
+    const to = ((gapEnd - maxGap) % 360 + 360) % 360;
+    return [from, to];
+  }
+
+  function arcPath(from, to, rad) {
+    const pt = (b) => {
+      const a = b * Math.PI / 180;
+      return [(160 + rad * Math.sin(a)).toFixed(1), (160 - rad * Math.cos(a)).toFixed(1)];
+    };
+    const span = ((to - from) % 360 + 360) % 360;
+    const [x1, y1] = pt(from), [x2, y2] = pt(to);
+    return `M${x1} ${y1} A${rad} ${rad} 0 ${span > 180 ? 1 : 0} 1 ${x2} ${y2}`;
+  }
+
+  function components(speed, dir, hdg) {
+    const d = relAngle(dir, hdg) * Math.PI / 180;
+    return { along: speed * Math.cos(d), cross: speed * Math.sin(d) };
+  }
+
+  function pressureAltitude(stationHpa) {
+    return 145366.45 * (1 - Math.pow(stationHpa / 1013.25, 0.190284));
+  }
+
+  function hhmm(stamp) { return stamp ? stamp.substr(8, 2) + ':' + stamp.substr(10, 2) : ''; }
+
+  // ---------- Main weather ----------
+  let current = null; // { dirM, seaPress } for other modules
+
+  function render(data) {
+    const sample = new Date(data.currYYYY, parseInt(data.currMM, 10) - 1, data.currDD, data.currhh, data.currmm);
+    const ageMin = Math.floor((Date.now() - sample) / 60000);
+    const stale = ageMin >= 15;
+
+    const dirM = t2m(Number(data.wind0dir));
+    const trendM = (data.winddirtrend || []).map(d => t2m(Number(d)));
+    const avg = r(Number(data.wind0avgwind));
+    const gust = r(Number(data.wind0windmax10));
+    const gusting = gust - avg > 5;
+    const temp = Number(data.th0temp), dew = Number(data.th0dew);
+    const sea = Number(data.thb0seapress), station = Number(data.thb0press);
+    const rate = parseFloat(data.rain0rate || 0);
+    current = { dirM, sea, stale };
+
+    // Header + banner
+    $('liveDot').classList.toggle('off', stale);
+    const zone = nzZone(+data.currYYYY, +data.currMM, +data.currDD);
+    set('updated', `${pad2(data.currhh)}:${pad2(data.currmm)} ${zone}` + (ageMin > 1 ? `, ${ageMin} min ago` : ''));
+    $('staleBanner').hidden = !stale;
+
+    // METAR-style summary, same format as the current site
+    let metar;
+    if (stale) metar = 'NZNE: no current data';
+    else {
+      metar = `NZNE ${fmtDir(dirM)}°M, ${avg}${gusting ? 'G' + gust : ''} kts, ${r(sea)} hPa, ${r(temp)}/${r(dew)}°C`;
+      if (rate > 0) metar += ', rain ' + (rate < 2.5 ? 'light' : rate < 7.6 ? 'moderate' : 'HEAVY');
+    }
+    set('metar', metar);
+    document.title = stale ? 'NZNE: no data' : `NZNE ${fmtDir(dirM)}/${avg}${gusting ? 'g' + gust : ''}kts, ${r(sea)}hpa`;
+
+    // Wind instrument
+    const arrow = $('windArrow');
+    const range = stale ? null : dirRange(trendM.slice(0, 10));
+    if (stale || avg < 1) {
+      arrow.setAttribute('visibility', 'hidden');
+      $('varArc').setAttribute('d', '');
+    } else {
+      arrow.setAttribute('visibility', 'visible');
+      arrow.style.transform = `rotate(${dirM}deg)`;
+      $('varArc').setAttribute('d', range ? arcPath(range[0], range[1], 150) : '');
+    }
+    if (stale) { set('windBig', '---° -- kt'); set('windGust', ' '); }
+    else if (avg < 1) { set('windBig', 'Calm'); set('windGust', ' '); }
+    else {
+      $('windBig').innerHTML = `${fmtDir(dirM)}° ${avg}<small> kt</small>`;
+      const g = $('windGust');
+      g.textContent = '';
+      if (gusting) {
+        g.append('Gusting ');
+        const s = document.createElement('span'); s.className = 'gusty'; s.textContent = gust + ' kt'; g.append(s);
+      } else g.append(`Gusts to ${gust} kt`);
+      if (range) g.append(`, varying ${fmtDir(range[0])}° to ${fmtDir(range[1])}°`);
+    }
+    $('instrument').setAttribute('aria-label', stale ? 'Wind instrument, no current data'
+      : `Wind from ${fmtDir(dirM)} degrees magnetic at ${avg} knots, gusts ${gust}` + (range ? `, varying ${fmtDir(range[0])} to ${fmtDir(range[1])}` : '') + ', drawn over runways 03/21 and 09/27');
+
+    // Favoured runway (03/21, the runway the current site uses)
+    if (stale) {
+      set('rwyNum', '--'); set('alongVal', '--'); set('crossVal', '--'); set('alongGust', ''); set('crossGust', '');
+    } else {
+      const best = RUNWAYS.map(rw => ({ ...rw, c: components(avg, dirM, rw.hdg), g: components(gust, dirM, rw.hdg) }))
+        .sort((a, b) => b.c.along - a.c.along)[0];
+      set('rwyNum', best.id);
+      const head = best.c.along >= 0;
+      set('alongLbl', head ? 'Headwind' : 'Tailwind');
+      set('alongVal', `${r(Math.abs(best.c.along))} kt`);
+      const side = best.c.cross >= 0 ? 'right' : 'left';
+      const xw = r(Math.abs(best.c.cross));
+      set('crossVal', xw === 0 ? '0 kt' : `${xw} kt ${side}`);
+      $('crossVal').classList.toggle('warn', xw > 10);
+      set('alongGust', gusting ? `${r(Math.abs(best.g.along))} in gusts` : '');
+      set('crossGust', gusting ? `${r(Math.abs(best.g.cross))} in gusts` : '');
+    }
+
+    // Conditions
+    const dash = (v) => stale ? '--' : v;
+    set('cPress', dash(String(r(sea))));
+    set('cTemp', dash(`${r(temp)}/${r(dew)}°`));
+    set('cTempSub', stale ? ' ' : `Humidity ${r(Number(data.th0hum))}%`);
+    const spread = temp - dew;
+    const base = Math.max(0, r(spread * 400 / 100) * 100);
+    set('cCloud', dash(`${base.toLocaleString('en-NZ')} ft`));
+    set('cCloudSub', stale ? ' ' : `Above the field, from a ${r(spread)}° spread`);
+    if (!stale && station > 800) {
+      const pa = pressureAltitude(station);
+      const isa = 15 - 0.0019812 * pa;
+      const da = pa + 118.8 * (temp - isa);
+      set('cDA', `${(r(da / 50) * 50).toLocaleString('en-NZ')} ft`);
+    } else set('cDA', '--');
+    set('cRain', `${data.rainds} mm`);
+    let rainSub = stale ? '' : `Rate ${rate.toFixed(1)} mm/h`;
+    if (data.rainlast) {
+      const lr = `${parseInt(data.rainlast.substr(6, 2), 10)}/${parseInt(data.rainlast.substr(4, 2), 10)} ${hhmm(data.rainlast)}`;
+      rainSub += (rainSub ? ', last ' : 'Last ') + lr;
+    }
+    set('cRainSub', rainSub || ' ');
+    set('cToday', `${r(data.tempdm)}/${r(data.tempdmin)}°`);
+    set('cTodaySub', `High ${hhmm(data.tempdmt)}, low ${hhmm(data.tempdmint)}`);
+
+    // Highs and lows
+    $('hTmaxD').innerHTML = `${r(data.tempdm)}°<small>${hhmm(data.tempdmt)}</small>`;
+    $('hTminD').innerHTML = `${r(data.tempdmin)}°<small>${hhmm(data.tempdmint)}</small>`;
+    set('hTmaxM', `${r(data.tempmm)}°`);
+    set('hTmaxY', `${r(data.tempym)}°`);
+    set('hWD', `${data.winddm} kt`);
+    set('hWM', `${data.windmm} kt`);
+    set('hRD', `${data.rainds} mm`);
+    set('hRM', `${data.rainms} mm`);
+    set('hPD', `${r(data.pressdm)}/${r(data.pressdmin)}`);
+
+    // Direction chart uses the per-minute trend in this payload
+    renderDirChart(trendM);
+    updatePressureTrend();
+
+    const now = new Date();
+    set('footer', `North Shore Airport (NZNE) weather station. Page refreshed at ${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}.`);
+  }
+
+  async function fetchWeather() {
+    try {
+      const res = await fetch(DATA_URL + '&_=' + Date.now());
+      if (!res.ok) throw new Error('Weather fetch failed: ' + res.status);
+      const data = await res.json();
+      cachePut('data', data);
+      render(data);
+    } catch (e) { console.error(e); }
+  }
+
+  // ---------- Charts (plain SVG, no chart library) ----------
+  const W = 340, H = 140;
+  const svgNS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, text) {
+    const n = document.createElementNS(svgNS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function axisLabels(svg, left, right) {
+    svg.append(el('text', { x: 0, y: H + 18, 'font-size': 11, fill: '#555F59' }, left));
+    svg.append(el('text', { x: W, y: H + 18, 'font-size': 11, fill: '#555F59', 'text-anchor': 'end' }, right));
+  }
+  function yTick(svg, y, label, dashed) {
+    svg.append(el('line', { x1: 0, x2: W, y1: y, y2: y, stroke: '#D3DED7', 'stroke-width': 1, 'stroke-dasharray': dashed ? '3 4' : '' }));
+    svg.append(el('text', { x: -6, y: y + 4, 'font-size': 11, fill: '#555F59', 'text-anchor': 'end' }, label));
+  }
+
+  function renderWindChart(h) {
+    const svg = $('windChart');
+    if (!h || !h.timestamps || !h.timestamps.length) return;
+    svg.replaceChildren();
+    const now = Date.now();
+    const mins = h.timestamps.map(t => (now - new Date(t)) / 60000);
+    const span = Math.max(10, Math.max(...mins));
+    const gusts = h.wind_gust.map(Number), avgs = h.wind_avg.map(Number);
+    const top = Math.max(15, Math.ceil(Math.max(...gusts.filter(isFinite), ...avgs.filter(isFinite)) / 5) * 5);
+    const X = (m) => (W * (1 - m / span)).toFixed(1);
+    const Y = (v) => (H - (v / top) * H).toFixed(1);
+    for (let v = 0; v <= top; v += top > 30 ? 10 : 5) yTick(svg, +Y(v), v, v !== 0);
+    const idx = mins.map((_, i) => i).filter(i => isFinite(avgs[i]) && isFinite(gusts[i]));
+    if (idx.length > 1) {
+      const upper = idx.map(i => `${X(mins[i])},${Y(gusts[i])}`);
+      const lower = idx.slice().reverse().map(i => `${X(mins[i])},${Y(avgs[i])}`);
+      svg.append(el('polygon', { points: upper.concat(lower).join(' '), fill: '#FBD49E' }));
+      svg.append(el('polyline', { points: idx.map(i => `${X(mins[i])},${Y(avgs[i])}`).join(' '), fill: 'none', stroke: '#007E33', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }));
+    }
+    axisLabels(svg, `${r(span)} min ago`, 'Now');
+    const last = idx[idx.length - 1];
+    svg.setAttribute('aria-label', last != null
+      ? `Wind strength over the last ${r(span)} minutes. Latest average ${r(avgs[last])} knots, gust ${r(gusts[last])}. Peak gust ${r(Math.max(...gusts.filter(isFinite)))} knots.`
+      : 'Wind strength chart, no data');
+  }
+
+  function renderDirChart(trendM) {
+    const svg = $('dirChart');
+    if (!trendM.length) return;
+    svg.replaceChildren();
+    // Centre the window on the circular mean so wrap-around near north stays readable.
+    const sx = trendM.reduce((s, d) => s + Math.sin(d * Math.PI / 180), 0);
+    const cx = trendM.reduce((s, d) => s + Math.cos(d * Math.PI / 180), 0);
+    const mean = ((Math.atan2(sx, cx) * 180 / Math.PI) + 360) % 360;
+    const unwrapped = trendM.map(d => mean + relAngle(d, mean));
+    const half = Math.max(45, Math.ceil((Math.max(...unwrapped.map(u => Math.abs(u - mean))) + 10) / 15) * 15);
+    const lo = mean - half, hi = mean + half;
+    const Y = (v) => (H * (hi - v) / (hi - lo)).toFixed(1);
+    const n = trendM.length;
+    const X = (i) => (W * (1 - i / Math.max(1, n - 1))).toFixed(1); // index 0 is now
+    svg.append(el('rect', { x: 0, y: 0, width: W, height: H, fill: '#E3EEE6' }));
+    // Runway headings inside the window
+    [['03', 30], ['09', 90], ['21', 210], ['27', 270]].forEach(([id, hdg]) => {
+      const u = mean + relAngle(hdg, mean);
+      if (u < lo || u > hi) return;
+      const y = +Y(u);
+      svg.append(el('line', { x1: 0, x2: W, y1: y, y2: y, stroke: '#3F4A44', 'stroke-width': 1.5, 'stroke-dasharray': '6 4' }));
+      svg.append(el('text', { x: W - 4, y: y - 5, 'font-size': 11, 'font-weight': 700, fill: '#3F4A44', 'text-anchor': 'end' }, 'Runway ' + id));
+    });
+    const step = half > 90 ? 60 : 30;
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+      const lab = String(((v % 360) + 360) % 360 || 360).padStart(3, '0');
+      svg.append(el('text', { x: -6, y: +Y(v) + 4, 'font-size': 11, fill: '#555F59', 'text-anchor': 'end' }, lab));
+    }
+    unwrapped.forEach((u, i) => svg.append(el('circle', { cx: X(i), cy: Y(u), r: 4, fill: '#007E33' })));
+    axisLabels(svg, `${n - 1} min ago`, 'Now');
+    const rg = dirRange(trendM);
+    svg.setAttribute('aria-label', `Wind direction over the last ${n - 1} minutes` + (rg ? `, between ${fmtDir(rg[0])} and ${fmtDir(rg[1])} degrees magnetic` : ''));
+  }
+
+  let pressureHistory = null;
+  function updatePressureTrend() {
+    if (!current || current.stale) { set('cPressSub', ' '); return; }
+    if (!pressureHistory || !pressureHistory.timestamps) { set('cPressSub', ' '); return; }
+    const now = Date.now();
+    const old = pressureHistory.timestamps
+      .map((t, i) => ({ ago: (now - new Date(t)) / 60000, v: Number(pressureHistory.sea_press_hpa[i]) }))
+      .filter(p => p.ago >= 150 && p.ago <= 210 && isFinite(p.v));
+    if (!old.length) { set('cPressSub', ' '); return; }
+    const diff = current.sea - old.reduce((s, p) => s + p.v, 0) / old.length;
+    const d = (diff >= 0 ? '+' : '−') + Math.abs(diff).toFixed(1);
+    set('cPressSub', diff > 0.5 ? `Rising, ${d} hPa in 3 h` : diff < -0.5 ? `Falling, ${d} hPa in 3 h` : `Steady, ${d} hPa in 3 h`);
+  }
+
+  function renderPressChart(h) {
+    pressureHistory = h;
+    updatePressureTrend();
+    const svg = $('pressChart');
+    if (!h || !h.timestamps || !h.timestamps.length) return;
+    svg.replaceChildren();
+    const now = Date.now();
+    const hrs = h.timestamps.map(t => (now - new Date(t)) / 3600000);
+    const vals = h.sea_press_hpa.map(Number);
+    const ok = hrs.map((_, i) => i).filter(i => isFinite(vals[i]));
+    if (!ok.length) return;
+    const span = Math.max(1, Math.max(...hrs));
+    const vmin = Math.min(...ok.map(i => vals[i])), vmax = Math.max(...ok.map(i => vals[i]));
+    const lo = Math.floor(vmin - 0.5), hi = Math.ceil(vmax + 0.5);
+    const X = (hh) => (W * (1 - hh / span)).toFixed(1);
+    const Y = (v) => (H * (hi - v) / (hi - lo)).toFixed(1);
+    const stepV = hi - lo > 8 ? 4 : hi - lo > 4 ? 2 : 1;
+    for (let v = Math.ceil(lo / stepV) * stepV; v <= hi; v += stepV) yTick(svg, +Y(v), v, true);
+    svg.append(el('polyline', { points: ok.map(i => `${X(hrs[i])},${Y(vals[i])}`).join(' '), fill: 'none', stroke: '#3F4A44', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }));
+    const li = ok.reduce((a, b) => hrs[a] < hrs[b] ? a : b);
+    svg.append(el('circle', { cx: X(hrs[li]), cy: Y(vals[li]), r: 4.5, fill: '#3F4A44' }));
+    axisLabels(svg, `${r(span)} h ago`, 'Now');
+    set('pressCap', `Pressure, last ${r(span)} hours (hPa)`);
+    svg.setAttribute('aria-label', `Pressure over the last ${r(span)} hours, from ${vmin.toFixed(1)} to ${vmax.toFixed(1)} hectopascals, now ${vals[li].toFixed(1)}`);
+  }
+
+  async function fetchJSONInto(url, kind, renderFn) {
+    try {
+      const res = await fetch(url + '?_=' + Date.now());
+      if (!res.ok) throw new Error(`${kind} fetch failed: ${res.status}`);
+      const data = await res.json();
+      cachePut(kind, data);
+      renderFn(data);
+    } catch (e) { console.error(e); }
+  }
+
+  // ---------- AWIB notice ----------
+  async function fetchNotice() {
+    try {
+      const res = await fetch(NOTICE_URL);
+      if (!res.ok) throw new Error('Notice fetch failed: ' + res.status);
+      const data = await res.json();
+      const text = String(data.NoticeText || '').trim();
+      const p = $('awib');
+      p.textContent = text;
+      p.hidden = !text;
+    } catch (e) { console.error(e); }
+  }
+
+  // ---------- Cameras ----------
+  async function fetchCameras() {
+    try {
+      const res = await fetch(CAM_URL);
+      if (!res.ok) throw new Error('Camera fetch failed: ' + res.status);
+      const cam = await res.json();
+      const fresh = Date.now() - new Date(cam.TimeStamp) < 15 * 60000;
+      const wrap = $('cams'), radar = $('radar');
+      wrap.querySelectorAll('.cam-live').forEach(n => n.remove());
+      $('camNote').hidden = fresh;
+      if (!fresh || !Array.isArray(cam.Cameras)) return;
+      cam.Cameras.forEach(c => {
+        const a = document.createElement('a');
+        a.className = 'cam cam-live';
+        a.href = 'http://weather.nsac.co.nz/cams/' + encodeURIComponent(c.HiResName);
+        a.target = '_blank'; a.rel = 'noopener';
+        const img = document.createElement('img');
+        img.src = PROXY_URL + encodeURIComponent('http://weather.nsac.co.nz/cams/' + c.LoResName) + '&_=' + Date.now();
+        img.alt = 'Camera: ' + c.CamName;
+        img.addEventListener('error', () => a.remove());
+        const s = document.createElement('span'); s.textContent = c.CamName;
+        a.append(img, s);
+        wrap.insertBefore(a, radar);
+      });
+    } catch (e) { console.error(e); }
+  }
+
+  // ---------- Start ----------
+  const cachedData = cacheGet('data');
+  if (cachedData) render(cachedData);
+  const cw = cacheGet('wind'); if (cw) renderWindChart(cw);
+  const cp = cacheGet('press'); if (cp) renderPressChart(cp);
+
+  function tick() {
+    fetchWeather();
+    fetchJSONInto(WIND_API_URL, 'wind', renderWindChart);
+    fetchJSONInto(PRESSURE_API_URL, 'press', renderPressChart);
+    fetchNotice();
+    fetchCameras();
+  }
+  tick();
+  setInterval(tick, UPDATE_INTERVAL);
+})();
+</script>
+</body>
+</html>
