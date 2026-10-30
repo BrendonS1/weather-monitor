@@ -50,8 +50,9 @@
   .masthead .status { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
   .dot { width: 9px; height: 9px; border-radius: 50%; background: #7CF0A6; display: inline-block; }
   .dot.off { background: #FFB4A8; }
-  .masthead nav { display: flex; flex-wrap: wrap; gap: 4px 18px; }
-  .masthead nav a { color: #fff; font-size: 15px; font-weight: 600; padding: 6px 0; }
+  .links { display: flex; flex-wrap: wrap; gap: 10px; }
+  .links a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 2px solid var(--green); border-radius: 4px; color: var(--green-dark); font-size: 16px; font-weight: 700; text-decoration: none; }
+  .links a:hover { background: var(--green); color: #fff; }
 
   main.wrap { display: flex; flex-direction: column; gap: 28px; padding-top: 20px; padding-bottom: 40px; }
   .metar { font-size: 20px; background: var(--tint); padding: 12px 16px; border-radius: 4px; }
@@ -150,14 +151,7 @@
       <h1>North Shore</h1>
       <span class="sub">NZNE weather station, elevation 212 ft</span>
     </div>
-    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px">
-      <span class="status"><span class="dot" id="liveDot"></span><span id="updated">Loading</span></span>
-      <nav aria-label="More">
-        <a href="/stats.html">Historic statistics</a>
-        <a href="https://serve-frontend-production.up.railway.app/query_page/query.html">Query the database</a>
-        <a href="/">Current site</a>
-      </nav>
-    </div>
+    <span class="status"><span class="dot" id="liveDot"></span><span id="updated">Loading</span></span>
   </div>
 </header>
 
@@ -308,6 +302,12 @@
     <p>The sensors sit on the runway 21 windsock mast, about 65 m east of the threshold. The AWIB on 130.45 MHz broadcasts time, wind, gusts, MSL pressure, temperature, dew point and other messages. Report AWIB issues to the flight office or North Shore Base on 118.00 MHz.</p>
     <p>Turbulence and wind shear can be expected in south-west to north-west winds on the runway 21 approach, including mechanical turbulence from nearby buildings and trees. More about operating here: <a href="http://www.northshoreairport.co.nz/arriving-by-aircraft/" target="_blank" rel="noopener">Arriving at North Shore Airport</a>. Station details: <a href="http://weather.nsac.co.nz/NEmetinf.htm" target="_blank" rel="noopener">station information</a>.</p>
   </details>
+
+  <nav class="links" aria-label="More">
+    <a href="/stats.html">Historic statistics</a>
+    <a href="https://serve-frontend-production.up.railway.app/query_page/query.html">Query the database</a>
+    <a href="/">Current site</a>
+  </nav>
 
   <footer id="footer">North Shore Airport (NZNE) weather station.</footer>
 </main>
