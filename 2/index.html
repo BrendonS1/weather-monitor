@@ -15,6 +15,8 @@
     --green-dark: #00662A;
     --green-bright: #00B84D;
     --paper: #F3F6F4;
+    --ground: #E4EBE6;
+    --panel: #FFFFFF;
     --tint: #E3EEE6;
     --line: #D3DED7;
     --ink: #1A1A1A;
@@ -27,7 +29,7 @@
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0; background: var(--paper); color: var(--ink);
+    margin: 0; background: var(--ground); color: var(--ink);
     font-family: 'Roboto Condensed', system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-size: 16px; line-height: 1.4;
   }
@@ -35,7 +37,9 @@
   a:hover { color: var(--ink); }
   :focus-visible { outline: 3px solid var(--green-bright); outline-offset: 2px; }
   h1, h2, p { margin: 0; }
-  h2 { font-size: 20px; font-weight: 700; }
+  h2 { font-size: 19px; font-weight: 700; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 12px; }
   .lbl { font-size: 14px; font-weight: 600; color: var(--muted); }
   .num { font-weight: 700; font-variant-numeric: tabular-nums; }
   .note { font-size: 14px; color: var(--muted); }
@@ -54,47 +58,50 @@
   .links a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 2px solid var(--green); border-radius: 4px; color: var(--green-dark); font-size: 16px; font-weight: 700; text-decoration: none; }
   .links a:hover { background: var(--green); color: #fff; }
 
-  main.wrap { display: flex; flex-direction: column; gap: 28px; padding-top: 20px; padding-bottom: 40px; }
-  .metar { font-size: 20px; background: var(--tint); padding: 12px 16px; border-radius: 4px; }
+  main.wrap { display: flex; flex-direction: column; gap: 14px; padding-top: 14px; padding-bottom: 40px; }
+  .metar { font-size: 18px; line-height: 1.3; background: var(--panel); border: 1px solid var(--line); padding: 12px 16px; border-radius: 6px; }
   .banner { background: #FDE7D2; color: #6B3A00; padding: 12px 16px; border-radius: 4px; font-weight: 600; }
 
-  .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
-  .col { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
   /* Wind */
-  .instrument { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
+  .instrument { display: block; width: 100%; max-width: 230px; margin: 0 auto; }
   .readout { text-align: center; display: flex; flex-direction: column; gap: 4px; }
-  .readout .big { font-size: 56px; line-height: 1; color: var(--green); }
-  .readout .big small { font-size: 24px; }
-  .readout .gust { font-size: 18px; font-weight: 600; }
+  .readout .big { font-size: 48px; line-height: 1; color: var(--green); }
+  .readout .big small { font-size: 22px; }
+  .readout .gust { font-size: 17px; font-weight: 600; }
   .gusty { color: var(--gust-text); }
 
-  .runway { display: flex; align-items: center; gap: 20px; }
-  .rwy-num { font-size: 52px; line-height: 1; background: var(--runway); color: #fff; padding: 10px 14px; border-radius: 4px; min-width: 2.2em; text-align: center; }
-  .comp { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 16px; }
-  .comp strong { font-size: 24px; }
+  .runway { display: flex; align-items: center; gap: 16px; }
+  .rwy-num { font-size: 40px; line-height: 1; background: var(--runway); color: #fff; padding: 10px 14px; border-radius: 4px; min-width: 2.2em; text-align: center; }
+  .comp { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; }
+  .comp strong { font-size: 22px; white-space: nowrap; }
   .comp .warn { color: var(--gust-text); }
 
   /* Conditions */
-  .cond { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; }
-  .cond > div { display: flex; flex-direction: column; gap: 3px; }
-  .cond .num { font-size: 32px; line-height: 1.1; }
-  .cond .sub { font-size: 15px; }
+  .cond { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .cond > div { display: flex; flex-direction: column; gap: 2px; background: var(--paper); border-radius: 4px; padding: 10px 12px; }
+  .cond .num { font-size: 28px; line-height: 1.15; }
+  .cond .sub { font-size: 14px; color: var(--muted); }
 
   /* Charts */
-  .charts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .charts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .charts figure { padding: 12px 0; border-top: 1px solid var(--line); }
+  .charts figure:first-child { border-top: 0; padding-top: 0; }
+  figcaption { color: var(--ink) !important; }
   figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
   figure svg { display: block; width: 100%; height: auto; }
   .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; font-weight: 600; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .sw-line { width: 16px; height: 3px; background: var(--green); display: inline-block; }
   .sw-band { width: 16px; height: 9px; background: var(--gust-fill); display: inline-block; }
-  .awib { background: var(--tint); padding: 12px 14px; border-radius: 4px; font-size: 16px; line-height: 1.5; }
+  .awib { background: var(--paper); padding: 12px 14px; border-radius: 4px; font-size: 16px; line-height: 1.5; }
   .freqs { display: flex; flex-wrap: wrap; gap: 12px 32px; }
   .freqs .num { font-size: 26px; }
 
   /* Traffic */
-  .traffic-frame { position: relative; border-radius: 4px; overflow: hidden; background: #1B1E21; height: 300px; }
+  .traffic-frame { position: relative; border-radius: 4px; overflow: hidden; background: #1B1E21; height: 280px; }
   .traffic-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
 
   /* Highs and lows */
@@ -119,25 +126,36 @@
   .cam span { font-size: 15px; font-weight: 600; }
 
   details { font-size: 15px; line-height: 1.55; }
+  details.panel { display: block; padding: 4px 16px; }
   summary { cursor: pointer; font-weight: 600; padding: 10px 0; }
   details p { margin-bottom: 8px; max-width: 72ch; }
-  footer { font-size: 14px; color: var(--muted); }
+  footer { font-size: 14px; color: var(--muted); padding: 0 2px; }
 
   .skel { color: transparent !important; background: var(--line); border-radius: 4px; }
 
+  @media (max-width: 380px) {
+    .wrap { padding: 0 12px; }
+    .panel { padding: 14px 12px; }
+    .cond .num { font-size: 25px; }
+  }
   @media (min-width: 720px) {
     .wrap { padding: 0 32px; }
-    .cond { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; }
+    main.wrap, .layout, .col { gap: 20px; }
+    main.wrap { padding-top: 20px; }
+    .panel { padding: 20px 22px; gap: 16px; }
+    .instrument { max-width: 300px; }
+    .readout .big { font-size: 56px; }
+    .cond { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 28px; }
+    .charts figure, .charts figure:first-child { border-top: 0; padding: 0; }
     .cams { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
     .table-scroll { max-width: 680px; }
     .traffic-frame { height: 380px; }
     .metar { font-size: 24px; }
   }
   @media (min-width: 1040px) {
-    .layout { grid-template-columns: minmax(360px, 420px) minmax(0, 1fr); gap: 56px; align-items: start; }
+    .layout { grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); align-items: start; }
     .masthead h1 { font-size: 34px; }
-    .readout .big { font-size: 64px; }
   }
   @media (prefers-reduced-motion: no-preference) {
     #windArrow { transition: transform 600ms ease; }
@@ -160,7 +178,8 @@
   <p class="banner" id="staleBanner" hidden>The station hasn't reported for over 15 minutes. Values below are blanked until it does.</p>
 
   <div class="layout">
-    <section class="col" aria-label="Wind and favoured runway">
+    <div class="col">
+    <section class="panel" aria-label="Wind">
       <svg class="instrument" viewBox="0 0 320 320" role="img" id="instrument" aria-label="Wind instrument">
         <circle cx="160" cy="160" r="150" fill="#E3EEE6"/>
         <circle cx="160" cy="160" r="140" fill="none" stroke="#00662A" stroke-width="8" stroke-dasharray="1.2 23.235" opacity="0.45"/>
@@ -192,11 +211,10 @@
         <p class="gust" id="windGust">&nbsp;</p>
         <p class="lbl">Degrees magnetic, 2 minute average</p>
       </div>
+    </section>
 
-      <hr>
-
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <h2>Favoured runway</h2>
+    <section class="panel" aria-labelledby="rwy-h">
+        <h2 id="rwy-h">Favoured runway</h2>
         <div class="runway">
           <span class="rwy-num num" id="rwyNum">--</span>
           <div class="comp">
@@ -209,51 +227,48 @@
           </div>
         </div>
         <p class="note">Expect turbulence and wind shear on the runway 21 approach in south to north-west winds.</p>
-      </div>
     </section>
+    </div>
 
     <div class="col">
-      <section aria-labelledby="cond-h" style="display:flex;flex-direction:column;gap:14px">
+      <section class="panel" aria-labelledby="cond-h">
         <h2 id="cond-h">Conditions</h2>
         <div class="cond">
           <div><span class="lbl">Pressure (MSL)</span><span class="num" id="cPress">--</span><span class="sub" id="cPressSub">&nbsp;</span></div>
-          <div><span class="lbl">Temperature / dew point</span><span class="num" id="cTemp">--</span><span class="sub" id="cTempSub">&nbsp;</span></div>
-          <div><span class="lbl">Cloud base, estimated</span><span class="num" id="cCloud">--</span><span class="sub" id="cCloudSub">&nbsp;</span></div>
-          <div><span class="lbl">Density altitude</span><span class="num" id="cDA">--</span><span class="sub">Field elevation 212 ft</span></div>
+          <div><span class="lbl">Temp / dew point</span><span class="num" id="cTemp">--</span><span class="sub" id="cTempSub">&nbsp;</span></div>
+          <div><span class="lbl">Cloud base (est.)</span><span class="num" id="cCloud">--</span><span class="sub" id="cCloudSub">&nbsp;</span></div>
+          <div><span class="lbl">Density altitude</span><span class="num" id="cDA">--</span><span class="sub">Field 212 ft</span></div>
           <div><span class="lbl">Rain today</span><span class="num" id="cRain">--</span><span class="sub" id="cRainSub">&nbsp;</span></div>
           <div><span class="lbl">Today</span><span class="num" id="cToday">--</span><span class="sub" id="cTodaySub">&nbsp;</span></div>
         </div>
         <p class="note">MSL pressure is not a certified QNH source. Cloud base and density altitude are estimates.</p>
       </section>
 
-      <hr>
-
-      <section aria-labelledby="trend-h" style="display:flex;flex-direction:column;gap:16px">
-        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
+      <section class="panel" aria-labelledby="trend-h">
+        <div class="panel-head">
           <h2 id="trend-h">Trends</h2>
           <span class="legend"><span><span class="sw-line"></span>Average wind</span><span><span class="sw-band"></span>Gusts</span></span>
         </div>
         <div class="charts">
           <figure><figcaption class="lbl">Wind strength, last hour (kt)</figcaption><svg id="windChart" viewBox="-28 -8 372 170" role="img" aria-label="Wind strength chart, loading"></svg></figure>
-          <figure><figcaption class="lbl">Wind direction, recent minutes (°M)</figcaption><svg id="dirChart" viewBox="-30 -8 374 170" role="img" aria-label="Wind direction chart, loading"></svg></figure>
+          <figure><figcaption class="lbl">Wind direction (°M)</figcaption><svg id="dirChart" viewBox="-30 -8 374 170" role="img" aria-label="Wind direction chart, loading"></svg></figure>
           <figure><figcaption class="lbl" id="pressCap">Pressure (hPa)</figcaption><svg id="pressChart" viewBox="-38 -8 378 170" role="img" aria-label="Pressure chart, loading"></svg></figure>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <span class="lbl">AWIB and radio</span>
-            <p class="awib" id="awib" hidden></p>
-            <div class="freqs">
-              <div style="display:flex;flex-direction:column;gap:2px"><span class="lbl">AWIB broadcast</span><span class="num">130.45</span></div>
-              <div style="display:flex;flex-direction:column;gap:2px"><span class="lbl">North Shore Base</span><span class="num">118.00</span></div>
-            </div>
-          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="radio-h">
+        <h2 id="radio-h">AWIB and radio</h2>
+        <p class="awib" id="awib" hidden></p>
+        <div class="freqs">
+          <div style="display:flex;flex-direction:column;gap:2px"><span class="lbl">AWIB broadcast</span><span class="num">130.45</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px"><span class="lbl">North Shore Base</span><span class="num">118.00</span></div>
         </div>
       </section>
     </div>
   </div>
 
-  <hr>
-
-  <section aria-labelledby="traffic-h" style="display:flex;flex-direction:column;gap:10px">
-    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px">
+  <section class="panel" aria-labelledby="traffic-h">
+    <div class="panel-head">
       <h2 id="traffic-h">Traffic</h2>
       <a href="/adsb_page/adsb_map.html" class="lbl" style="color:var(--green-dark)">Open the full traffic map</a>
     </div>
@@ -263,9 +278,7 @@
     <p class="note">ADS-B traffic within 60 nm. Labels show callsign and altitude in hundreds of feet. Not for separation.</p>
   </section>
 
-  <hr>
-
-  <section aria-labelledby="cam-h" style="display:flex;flex-direction:column;gap:12px">
+  <section class="panel" aria-labelledby="cam-h">
     <h2 id="cam-h">Cameras and radar</h2>
     <div class="cams" id="cams">
       <a class="cam" href="https://www.metservice.com/maps-radar/rain/radar/auckland?range=120&amp;tab=real-time" target="_blank" rel="noopener" id="radar">
@@ -276,9 +289,7 @@
     <p class="note" id="camNote" hidden>Camera images are more than 15 minutes old, so they're hidden.</p>
   </section>
 
-  <hr>
-
-  <section aria-labelledby="hl-h" style="display:flex;flex-direction:column;gap:12px">
+  <section class="panel" aria-labelledby="hl-h">
     <h2 id="hl-h">Highs and lows</h2>
     <div class="table-scroll">
       <table class="hl">
@@ -295,9 +306,7 @@
     <p class="note" id="hlNote">Pressure is high/low.</p>
   </section>
 
-  <hr>
-
-  <details>
+  <details class="panel">
     <summary>About this station</summary>
     <p>The sensors sit on the runway 21 windsock mast, about 65 m east of the threshold. The AWIB on 130.45 MHz broadcasts time, wind, gusts, MSL pressure, temperature, dew point and other messages. Report AWIB issues to the flight office or North Shore Base on 118.00 MHz.</p>
     <p>Turbulence and wind shear can be expected in south-west to north-west winds on the runway 21 approach, including mechanical turbulence from nearby buildings and trees. More about operating here: <a href="http://www.northshoreairport.co.nz/arriving-by-aircraft/" target="_blank" rel="noopener">Arriving at North Shore Airport</a>. Station details: <a href="http://weather.nsac.co.nz/NEmetinf.htm" target="_blank" rel="noopener">station information</a>.</p>
@@ -490,7 +499,7 @@
     const spread = temp - dew;
     const base = Math.max(0, r(spread * 400 / 100) * 100);
     set('cCloud', dash(`${base.toLocaleString('en-NZ')} ft`));
-    set('cCloudSub', stale ? ' ' : `Above the field, from a ${r(spread)}° spread`);
+    set('cCloudSub', stale ? ' ' : `Above field, ${r(spread)}° spread`);
     if (!stale && station > 800) {
       const pa = pressureAltitude(station);
       const isa = 15 - 0.0019812 * pa;
@@ -498,11 +507,9 @@
       set('cDA', `${(r(da / 50) * 50).toLocaleString('en-NZ')} ft`);
     } else set('cDA', '--');
     set('cRain', `${data.rainds} mm`);
-    let rainSub = stale ? '' : `Rate ${rate.toFixed(1)} mm/h`;
-    if (data.rainlast) {
-      const lr = `${parseInt(data.rainlast.substr(6, 2), 10)}/${parseInt(data.rainlast.substr(4, 2), 10)} ${hhmm(data.rainlast)}`;
-      rainSub += (rainSub ? ', last ' : 'Last ') + lr;
-    }
+    let rainSub = '';
+    if (!stale && rate > 0) rainSub = `Raining ${rate.toFixed(1)} mm/h`;
+    else if (data.rainlast) rainSub = `Last rain ${parseInt(data.rainlast.substr(6, 2), 10)}/${parseInt(data.rainlast.substr(4, 2), 10)}`;
     set('cRainSub', rainSub || ' ');
     set('cToday', `${r(data.tempdm)}/${r(data.tempdmin)}°`);
     set('cTodaySub', `High ${hhmm(data.tempdmt)}, low ${hhmm(data.tempdmint)}`);
@@ -678,7 +685,7 @@
     if (!old.length) { set('cPressSub', ' '); return; }
     const diff = current.sea - old.reduce((s, p) => s + p.v, 0) / old.length;
     const d = (diff >= 0 ? '+' : '−') + Math.abs(diff).toFixed(1);
-    set('cPressSub', diff > 0.5 ? `Rising, ${d} hPa in 3 h` : diff < -0.5 ? `Falling, ${d} hPa in 3 h` : `Steady, ${d} hPa in 3 h`);
+    set('cPressSub', `${diff > 0.5 ? 'Rising' : diff < -0.5 ? 'Falling' : 'Steady'} ${d} in 3 h`);
   }
 
   function renderPressChart(h) {

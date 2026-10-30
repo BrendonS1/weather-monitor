@@ -13,8 +13,22 @@ const ALLOWED_URLS = [
     'http://weather.nsac.co.nz/awibexport.txt',
     'http://weather.nsac.co.nz/cams/CamInfo.txt',
     'http://weather.nsac.co.nz/cams/',  // Allow all camera images
-    'https://storage.googleapis.com/29f98e10-a489-4c82-ae5e-489dbcd4912f/nz_asp.geojson',
+    // openAIP's nightly NZ airspace export. The old Google bucket
+    // (storage.googleapis.com/29f98e10-...) became Requester Pays in July 2026
+    // and refuses anonymous downloads; openAIP serves the same files here.
+    'https://s3.openaip.net/openaip-system-exports/nz_asp.geojson',
 ];
+
+// Longer cache for files that change at most daily, to go easy on the
+// rate-limited openAIP host. Everything else uses CACHE_DURATION.
+const LONG_CACHE = [
+    { prefix: 'https://s3.openaip.net/', ms: 6 * 60 * 60 * 1000 },
+];
+
+function cacheDurationFor(targetUrl) {
+    const rule = LONG_CACHE.find(r => targetUrl.startsWith(r.prefix));
+    return rule ? rule.ms : CACHE_DURATION;
+}
 
 // Cache configuration
 const cache = new Map();
@@ -42,7 +56,7 @@ function getCachedData(targetUrl) {
     const age = now - cached.timestamp;
     
     // Return cached data if it's fresh enough
-    if (age < CACHE_DURATION) {
+    if (age < cacheDurationFor(targetUrl)) {
         console.log(`Cache HIT for ${targetUrl} (age: ${Math.round(age/1000)}s)`);
         return cached;
     }
@@ -175,38 +189,54 @@ const server = http.createServer((req, res) => {
     const protocol = targetUrl.startsWith('https') ? https : http;
     
     protocol.get(targetUrl, (proxyRes) => {
-        let data = '';
-        let chunks = [];
-        let isBinary = false;
+        // Collect raw bytes for every response. Joining text chunks as strings
+        // can split multi-byte characters (macrons in place names).
+        const chunks = [];
+        const contentType = proxyRes.headers['content-type'] || 'text/plain';
+        const status = proxyRes.statusCode || 502;
 
-        // Check if response is binary (images)
-        const contentType = proxyRes.headers['content-type'] || '';
-        if (contentType.includes('image/') || contentType.includes('application/octet-stream')) {
-            isBinary = true;
-        }
-
-        proxyRes.on('data', (chunk) => {
-            if (isBinary) {
-                chunks.push(chunk);
-            } else {
-                data += chunk;
-            }
-        });
+        proxyRes.on('data', (chunk) => chunks.push(chunk));
 
         proxyRes.on('end', () => {
-            const headers = {
-                'Content-Type': proxyRes.headers['content-type'] || 'text/plain',
+            const responseData = Buffer.concat(chunks);
+
+            // Pass upstream failures through as failures, and never cache
+            // them. Previously an error page came back as 200 and was cached,
+            // so the browser tried to read an error message as data.
+            if (status < 200 || status >= 300) {
+                console.error(`Upstream ${status} for ${targetUrl}`);
+                const stale = cache.get(getCacheKey(targetUrl));
+                if (stale) {
+                    console.log(`Serving STALE cache for ${targetUrl} after upstream ${status}`);
+                    res.writeHead(200, {
+                        'Content-Type': stale.contentType,
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                        'Cache-Control': 'public, max-age=60',
+                        'X-Cache': 'STALE'
+                    });
+                    res.end(stale.data);
+                    return;
+                }
+                res.writeHead(502, {
+                    'Content-Type': 'text/plain',
+                    'Access-Control-Allow-Origin': '*',
+                    'X-Upstream-Status': String(status)
+                });
+                res.end(`Upstream returned ${status} for ${targetUrl}`);
+                return;
+            }
+
+            const isBinary = contentType.includes('image/') || contentType.includes('application/octet-stream');
+            setCachedData(targetUrl, responseData, isBinary, contentType);
+
+            res.writeHead(200, {
+                'Content-Type': contentType,
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, OPTIONS',
                 'Cache-Control': 'public, max-age=60',
                 'X-Cache': 'MISS'
-            };
-
-            // Cache the response
-            const responseData = isBinary ? Buffer.concat(chunks) : data;
-            setCachedData(targetUrl, responseData, isBinary, proxyRes.headers['content-type'] || 'text/plain');
-
-            res.writeHead(200, headers);
+            });
             res.end(responseData);
         });
 

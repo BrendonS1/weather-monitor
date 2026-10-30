@@ -810,7 +810,8 @@ function buildAirspaceTooltip(props) {
 }
 
 async function loadNZAirspace() {
-  const gcsUrl = 'https://storage.googleapis.com/29f98e10-a489-4c82-ae5e-489dbcd4912f/nz_asp.geojson';
+  // openAIP nightly export (moved from the Google bucket, which became Requester Pays in July 2026)
+  const gcsUrl = 'https://s3.openaip.net/openaip-system-exports/nz_asp.geojson';
   const urls = [
     `${CONFIG.proxyBase}/?url=${encodeURIComponent(gcsUrl)}`,
   ];
