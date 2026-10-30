@@ -271,6 +271,19 @@
 
   <hr>
 
+  <section aria-labelledby="cam-h" style="display:flex;flex-direction:column;gap:12px">
+    <h2 id="cam-h">Cameras and radar</h2>
+    <div class="cams" id="cams">
+      <a class="cam" href="https://www.metservice.com/maps-radar/rain/radar/auckland?range=120&amp;tab=real-time" target="_blank" rel="noopener" id="radar">
+        <img src="https://www.metservice.com/publicData/rainRadar/image/Auckland/120K/" alt="Auckland rain radar" loading="lazy" style="object-position:50% 85%">
+        <span>Auckland rain radar</span>
+      </a>
+    </div>
+    <p class="note" id="camNote" hidden>Camera images are more than 15 minutes old, so they're hidden.</p>
+  </section>
+
+  <hr>
+
   <section aria-labelledby="hl-h" style="display:flex;flex-direction:column;gap:12px">
     <h2 id="hl-h">Highs and lows</h2>
     <div class="table-scroll">
@@ -286,19 +299,6 @@
       </table>
     </div>
     <p class="note" id="hlNote">Pressure is high/low.</p>
-  </section>
-
-  <hr>
-
-  <section aria-labelledby="cam-h" style="display:flex;flex-direction:column;gap:12px">
-    <h2 id="cam-h">Cameras and radar</h2>
-    <div class="cams" id="cams">
-      <a class="cam" href="https://www.metservice.com/maps-radar/rain/radar/auckland?range=120&amp;tab=real-time" target="_blank" rel="noopener" id="radar">
-        <img src="https://www.metservice.com/publicData/rainRadar/image/Auckland/120K/" alt="Auckland rain radar" loading="lazy" style="object-position:50% 85%">
-        <span>Auckland rain radar</span>
-      </a>
-    </div>
-    <p class="note" id="camNote" hidden>Camera images are more than 15 minutes old, so they're hidden.</p>
   </section>
 
   <hr>
@@ -699,9 +699,9 @@
     const Y = (v) => (H * (hi - v) / (hi - lo)).toFixed(1);
     const stepV = hi - lo > 8 ? 4 : hi - lo > 4 ? 2 : 1;
     for (let v = Math.ceil(lo / stepV) * stepV; v <= hi; v += stepV) yTick(svg, +Y(v), v, true);
-    svg.append(el('polyline', { points: ok.map(i => `${X(hrs[i])},${Y(vals[i])}`).join(' '), fill: 'none', stroke: '#3F4A44', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }));
+    svg.append(el('polyline', { points: ok.map(i => `${X(hrs[i])},${Y(vals[i])}`).join(' '), fill: 'none', stroke: '#007E33', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }));
     const li = ok.reduce((a, b) => hrs[a] < hrs[b] ? a : b);
-    svg.append(el('circle', { cx: X(hrs[li]), cy: Y(vals[li]), r: 4.5, fill: '#3F4A44' }));
+    svg.append(el('circle', { cx: X(hrs[li]), cy: Y(vals[li]), r: 4.5, fill: '#007E33' }));
     axisLabels(svg, `${r(span)} h ago`, 'Now');
     set('pressCap', `Pressure, last ${r(span)} hours (hPa)`);
     svg.setAttribute('aria-label', `Pressure over the last ${r(span)} hours, from ${vmin.toFixed(1)} to ${vmax.toFixed(1)} hectopascals, now ${vals[li].toFixed(1)}`);
