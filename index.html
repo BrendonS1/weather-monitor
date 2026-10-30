@@ -97,6 +97,7 @@
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .sw-line { width: 16px; height: 3px; background: var(--green); display: inline-block; }
   .sw-band { width: 16px; height: 9px; background: var(--gust-fill); display: inline-block; }
+  .sw-xw { width: 16px; height: 0; border-top: 2.5px dashed #C62828; display: inline-block; }
   .awib { background: var(--paper); padding: 12px 14px; border-radius: 4px; font-size: 16px; line-height: 1.5; }
   .freqs { display: flex; flex-wrap: wrap; gap: 12px 32px; }
   .freqs .num { font-size: 26px; }
@@ -248,7 +249,7 @@
       <section class="panel" aria-labelledby="trend-h">
         <div class="panel-head">
           <h2 id="trend-h">Trends</h2>
-          <span class="legend"><span><span class="sw-line"></span>Average wind</span><span><span class="sw-band"></span>Gusts</span></span>
+          <span class="legend"><span><span class="sw-line"></span>Average wind</span><span><span class="sw-band"></span>Gusts</span><span><span class="sw-xw"></span>Crosswind</span></span>
         </div>
         <div class="charts">
           <figure><figcaption class="lbl">Wind strength, last hour (kt)</figcaption><svg id="windChart" viewBox="-28 -8 372 170" role="img" aria-label="Wind strength chart, loading"></svg></figure>
@@ -634,10 +635,16 @@
       svg.append(el('polygon', { points: upper.concat(lower).join(' '), fill: '#FBD49E' }));
       svg.append(el('polyline', { points: idx.map(i => `${X(mins[i])},${Y(avgs[i])}`).join(' '), fill: 'none', stroke: '#007E33', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }));
     }
+    // Crosswind on the favoured runway (calculated by the database, as on the old site).
+    const xws = (h.wind_xwind || []).map(Number);
+    const xi = mins.map((_, i) => i).filter(i => isFinite(xws[i]));
+    if (xi.length > 1) {
+      svg.append(el('polyline', { points: xi.map(i => `${X(mins[i])},${Y(Math.min(xws[i], top))}`).join(' '), fill: 'none', stroke: '#C62828', 'stroke-width': 2, 'stroke-dasharray': '5 3', 'stroke-linejoin': 'round' }));
+    }
     axisLabels(svg, `${r(span)} min ago`, 'Now');
     const last = idx[idx.length - 1];
     svg.setAttribute('aria-label', last != null
-      ? `Wind strength over the last ${r(span)} minutes. Latest average ${r(avgs[last])} knots, gust ${r(gusts[last])}. Peak gust ${r(Math.max(...gusts.filter(isFinite)))} knots.`
+      ? `Wind strength over the last ${r(span)} minutes. Latest average ${r(avgs[last])} knots, gust ${r(gusts[last])}` + (isFinite(xws[last]) ? `, crosswind ${r(xws[last])}` : '') + `. Peak gust ${r(Math.max(...gusts.filter(isFinite)))} knots.`
       : 'Wind strength chart, no data');
   }
 
