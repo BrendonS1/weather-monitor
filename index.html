@@ -150,7 +150,12 @@
     .cond { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
     .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 28px; }
     .charts figure, .charts figure:first-child { border-top: 0; padding: 0; }
-    .cams { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+    /* Tiles share the row and stay centred: 3 across, or 2 across when there are exactly 2 or 4. */
+    .cams { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+    .cams > .cam { flex: 0 1 calc((100% - 32px) / 3); min-width: 0; }
+    .cams:has(> .cam:nth-child(2):last-child) > .cam,
+    .cams:has(> .cam:nth-child(4):last-child) > .cam { flex-basis: calc((100% - 16px) / 2); }
+    .cam span { font-size: 16px; }
     .table-scroll { max-width: 680px; }
     .traffic-frame { height: 380px; }
     .metar { font-size: 24px; }
