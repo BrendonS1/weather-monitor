@@ -557,27 +557,42 @@
     return isFinite(v) ? v : null;
   }
 
+  // Station fields for month/year figures. The station (Meteobridge) keeps
+  // its own year-to-date statistics, so these cover the whole year. Only
+  // tempym, windmm and rainms are in the feed today; the rest are used as
+  // soon as the station template adds them (see Documentation/STATION-FIELDS.md).
+  // Anything missing falls back to the logged history from /api/records.
   function fillFromLog() {
-    if (!records) return;
-    const m = records.month || {}, y = records.year || {};
+    const m = (records && records.month) || {}, y = (records && records.year) || {};
+    const st = (k) => stationNum(k);
     const deg = (v) => v == null ? null : `${r(v)}°`;
     const range = (hi, lo) => hi == null || lo == null ? null : `${r(hi)}/${r(lo)}`;
+    const fromLog = [];
+    const pick = (stationVal, logVal, name) => {
+      if (stationVal != null) return stationVal;
+      if (logVal != null) fromLog.push(name);
+      return logVal;
+    };
 
-    fillCell('hTminM', deg(m.min_temp));
-    fillCell('hTminY', deg(y.min_temp));
-    fillCell('hWY', y.max_wind == null ? null : `${r(Math.max(y.max_wind, stationNum('windmm') ?? -1))}`);
-    fillCell('hRY', y.rain == null ? null : y.rain.toFixed(1));
-    fillCell('hPM', range(m.max_press, m.min_press));
-    fillCell('hPY', range(y.max_press, y.min_press));
-    // Only fill these from the log if the station feed is missing them.
-    if (stationNum('tempym') == null && y.max_temp != null) fillCell('hTmaxY', deg(y.max_temp));
-    if (stationNum('windmm') == null && m.max_wind != null) fillCell('hWM', `${r(m.max_wind)}`);
+    fillCell('hTminM', deg(pick(st('tempmmin'), m.min_temp, 'month')));
+    fillCell('hTminY', deg(pick(st('tempymin'), y.min_temp, 'year')));
+    const windY = pick(st('windym'), y.max_wind == null ? null : Math.max(y.max_wind, st('windmm') ?? -1), 'year');
+    fillCell('hWY', windY == null ? null : `${r(windY)}`);
+    const rainY = pick(st('rainys'), y.rain, 'year');
+    fillCell('hRY', rainY == null ? null : rainY.toFixed(1));
+    const pmHi = pick(st('pressmm'), m.max_press, 'month'), pmLo = pick(st('pressmmin'), m.min_press, 'month');
+    fillCell('hPM', range(pmHi, pmLo));
+    const pyHi = pick(st('pressym'), y.max_press, 'year'), pyLo = pick(st('pressymin'), y.min_press, 'year');
+    fillCell('hPY', range(pyHi, pyLo));
+    if (st('tempym') == null && y.max_temp != null) { fillCell('hTmaxY', deg(y.max_temp)); fromLog.push('year'); }
+    if (st('windmm') == null && m.max_wind != null) { fillCell('hWM', `${r(m.max_wind)}`); fromLog.push('month'); }
 
-    let note = 'Pressure is high/low. Month and year minimums, year wind and rain, and the pressure range come from the station log.';
-    const first = records.first_sample ? new Date(records.first_sample) : null;
-    const yearStart = records.year_start ? new Date(records.year_start) : null;
-    if (first && yearStart && first - yearStart > 2 * 86400e3) {
-      note += ` The log starts on ${first.toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', timeZone: 'Pacific/Auckland' })}, so this year's figures cover from then.`;
+    let note = 'Pressure is high/low.';
+    if (fromLog.length) note += ' Figures the station feed doesn\'t provide come from the station log.';
+    const first = records && records.first_sample ? new Date(records.first_sample) : null;
+    const yearStart = records && records.year_start ? new Date(records.year_start) : null;
+    if (fromLog.includes('year') && first && yearStart && first - yearStart > 2 * 86400e3) {
+      note += ` The log starts on ${first.toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', timeZone: 'Pacific/Auckland' })}, so those year figures cover from then.`;
     }
     set('hlNote', note);
   }
