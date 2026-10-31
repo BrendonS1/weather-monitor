@@ -301,11 +301,10 @@
           <tr><th scope="row" class="lbl">Min temp</th><td class="num" id="hTminD">--</td><td class="num na" id="hTminM">–</td><td class="num na" id="hTminY">–</td></tr>
           <tr><th scope="row" class="lbl">Max wind (kt)</th><td class="num" id="hWD">--</td><td class="num" id="hWM">--</td><td class="num na" id="hWY">–</td></tr>
           <tr><th scope="row" class="lbl">Rain (mm)</th><td class="num" id="hRD">--</td><td class="num" id="hRM">--</td><td class="num na" id="hRY">–</td></tr>
-          <tr><th scope="row" class="lbl">Pressure (hPa)</th><td class="num" id="hPD">--</td><td class="num na" id="hPM">–</td><td class="num na" id="hPY">–</td></tr>
+          <tr><th scope="row" class="lbl">Pressure hi/lo (hPa)</th><td class="num" id="hPD">--</td><td class="num na" id="hPM">–</td><td class="num na" id="hPY">–</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="note" id="hlNote">Pressure is high/low.</p>
   </section>
 
   <details class="panel">
@@ -572,14 +571,6 @@
     // Only fill these from the log if the station feed is missing them.
     if (stationNum('tempym') == null && y.max_temp != null) fillCell('hTmaxY', deg(y.max_temp));
     if (stationNum('windmm') == null && m.max_wind != null) fillCell('hWM', `${r(m.max_wind)}`);
-
-    let note = 'Pressure is high/low. Month and year minimums, year wind and rain, and the pressure range come from the station log.';
-    const first = records.first_sample ? new Date(records.first_sample) : null;
-    const yearStart = records.year_start ? new Date(records.year_start) : null;
-    if (first && yearStart && first - yearStart > 2 * 86400e3) {
-      note += ` The log starts on ${first.toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', timeZone: 'Pacific/Auckland' })}, so this year's figures cover from then.`;
-    }
-    set('hlNote', note);
   }
 
   function renderRecords(data) {
