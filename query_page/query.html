@@ -261,7 +261,7 @@
         <!-- SQL Editor -->
         <div class="card">
             <div class="card-title">SQL Query</div>
-            <textarea id="sql" placeholder="SELECT * FROM weather_data ORDER BY timestamp DESC LIMIT 10;"></textarea>
+            <textarea id="sql" placeholder="SELECT * FROM weather_update ORDER BY device_utc_ts DESC LIMIT 10;"></textarea>
             <div class="editor-controls">
                 <button class="btn btn-primary" id="runBtn" onclick="runQuery()">Run Query</button>
                 <div class="spinner" id="spinner"></div>
@@ -298,10 +298,20 @@
         // Point this at your deployed query-server URL
         const QUERY_URL = 'https://query-weather-db-service-production.up.railway.app/query';
 
+        // Presets read weather_update: one parsed row per station report, kept
+        // for 2 years. (weather_data holds raw snapshots for 30 days only, and
+        // its time column is captured_at, not timestamp.) Times shown in NZ time.
+        const COLS = "to_char(device_utc_ts AT TIME ZONE 'Pacific/Auckland', 'YYYY-MM-DD HH24:MI') AS nz_time, " +
+            "wind_dir_deg_mag AS dir_mag, wind_avg, wind_max_10 AS gust_10min, wind_rwy_fav AS runway, wind_xwind AS crosswind, " +
+            "temp_out_c AS temp, dew_out_c AS dew, hum_out_pct AS humidity, sea_press_hpa AS qnh_msl, rain_rate";
+        const TODAY_NZ = "(date_trunc('day', now() AT TIME ZONE 'Pacific/Auckland') AT TIME ZONE 'Pacific/Auckland')";
         const PRESETS = {
-            latest: 'SELECT * FROM weather_data ORDER BY timestamp DESC LIMIT 10;',
-            count: 'SELECT COUNT(*) AS total_records FROM weather_data;',
-            today: "SELECT * FROM weather_data WHERE timestamp >= CURRENT_DATE ORDER BY timestamp DESC;",
+            latest: `SELECT ${COLS} FROM weather_update ORDER BY device_utc_ts DESC LIMIT 10;`,
+            count: "SELECT COUNT(*) AS total_records, " +
+                "to_char(MIN(device_utc_ts) AT TIME ZONE 'Pacific/Auckland', 'YYYY-MM-DD HH24:MI') AS first_record, " +
+                "to_char(MAX(device_utc_ts) AT TIME ZONE 'Pacific/Auckland', 'YYYY-MM-DD HH24:MI') AS latest_record " +
+                "FROM weather_update;",
+            today: `SELECT ${COLS} FROM weather_update WHERE device_utc_ts >= ${TODAY_NZ} ORDER BY device_utc_ts DESC;`,
             tables: "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
         };
 
