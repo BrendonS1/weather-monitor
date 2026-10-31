@@ -92,8 +92,12 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ columns, rows }));
     } catch (err) {
         console.error('Query error:', err.message);
-        res.writeHead(500, headers);
-        res.end(JSON.stringify({ error: 'Query failed. Check your SQL syntax.' }));
+        // Show the database's own message (e.g. 'column "timestamp" does not
+        // exist') so a failing query can be fixed. Only password holders see it.
+        const message = err && err.message ? `Query failed: ${err.message}` : 'Query failed.';
+        const status = err && err.message === 'Invalid JSON' ? 400 : 500;
+        res.writeHead(status, headers);
+        res.end(JSON.stringify({ error: message }));
     }
 });
 
